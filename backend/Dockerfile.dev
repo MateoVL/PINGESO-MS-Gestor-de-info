@@ -1,0 +1,18 @@
+FROM golang:1.23-alpine
+
+WORKDIR /app
+
+# Instalar git y herramientas necesarias si se requieren
+RUN apk add --no-cache git curl
+
+# Copiar manifiestos de dependencias
+COPY go.mod go.sum* ./
+RUN go mod download
+
+# Copiar el código fuente
+COPY . .
+
+EXPOSE 8080
+
+# En desarrollo ejecutamos directamente go run cmd/api/main.go
+CMD ["go", "run", "cmd/api/main.go"]
