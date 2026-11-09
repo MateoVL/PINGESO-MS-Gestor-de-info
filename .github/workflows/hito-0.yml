@@ -35,7 +35,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Pruebas y cobertura de Go
         working-directory: backend
-        run: go test -coverprofile=coverage.out ./...
+        run: go test -coverpkg=./... -coverprofile=coverage.out ./...
       - name: Pruebas, cobertura y build de Vue
         working-directory: frontend
         run: |

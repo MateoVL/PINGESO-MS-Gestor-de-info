@@ -79,7 +79,7 @@ local-front: env ## Ejecuta el frontend Vue localmente en el host
 # Mantenimiento y Pruebas
 # ==============================================================================
 test: ## Ejecuta pruebas de Go y Vue y genera sus reportes de cobertura
-	cd backend && go test -coverprofile=coverage.out ./...
+	cd backend && go test -coverpkg=./... -coverprofile=coverage.out ./...
 	cd frontend && npm ci && npm run test:coverage
 
 clean: ## Limpia contenedores, redes y volúmenes temporales de Docker

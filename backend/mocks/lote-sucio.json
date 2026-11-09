@@ -1,0 +1,106 @@
+{
+  "origen": "Extractor OCR",
+  "referencia_externa": "mock-2",
+  "registros": [
+    {
+      "folio": "  DOC-0001 ",
+      "nombre": " Javiera   Torres  ",
+      "correo": " JAVIERA1@CORREO.CL"
+    },
+    {
+      "folio": "  DOC-0001 ",
+      "nombre": " Valentina   Muñoz  ",
+      "correo": "valentina2@example.com"
+    },
+    {
+      "folio": "doc-0003",
+      "nombre": "Valentina Muñoz",
+      "correo": "valentina3@correo.cl"
+    },
+    {
+      "folio": "  DOC-0004 ",
+      "nombre": "Javiera Torres",
+      "correo": "javiera4 at correo.cl"
+    },
+    {
+      "folio": "  DOC-0005 ",
+      "nombre": " Joaquín   Castro  ",
+      "correo": "joaquin5@correo.cl"
+    },
+    {
+      "folio": "  DOC-0006 ",
+      "nombre": "Matías Rojas",
+      "correo": "matias6@usach.cl"
+    },
+    {
+      "folio": "  DOC-0004 ",
+      "nombre": " Isidora   Vargas  ",
+      "correo": " ISIDORA7@EXAMPLE.COM"
+    },
+    {
+      "folio": "",
+      "nombre": "Tomás Fuentes",
+      "correo": " TOMÁS8@USACH.CL"
+    },
+    {
+      "folio": "doc-0009",
+      "nombre": "Joaquín Castro",
+      "correo": "joaquin9@example.com"
+    },
+    {
+      "folio": "doc-0010",
+      "nombre": "   ",
+      "correo": "javiera10@usach.cl"
+    },
+    {
+      "folio": "",
+      "nombre": " Valentina   Muñoz  ",
+      "correo": "valentina11@usach.cl"
+    },
+    {
+      "folio": "doc-0012",
+      "nombre": "Matías Rojas",
+      "correo": "matias12@correo.cl"
+    },
+    {
+      "folio": "doc-0013",
+      "nombre": "Tomás Fuentes",
+      "correo": "tomás13@example.com"
+    },
+    {
+      "folio": "  DOC-0014 ",
+      "nombre": "Benjamín Silva",
+      "correo": "benjamin14@usach.cl"
+    },
+    {
+      "folio": "doc-0015",
+      "nombre": "Joaquín Castro",
+      "correo": " JOAQUIN15@USACH.CL"
+    },
+    {
+      "folio": "doc-0016",
+      "nombre": "   ",
+      "correo": " CAMILA16@USACH.CL"
+    },
+    {
+      "folio": "doc-0017",
+      "nombre": "Elena Díaz",
+      "correo": " ELENA17@EXAMPLE.COM"
+    },
+    {
+      "folio": "doc-0018",
+      "nombre": " Camila   Soto  ",
+      "correo": " CAMILA18@CORREO.CL"
+    },
+    {
+      "folio": "  DOC-0004 ",
+      "nombre": "Valentina Muñoz",
+      "correo": "valentina19@correo.cl"
+    },
+    {
+      "folio": "  DOC-0020 ",
+      "nombre": "Valentina Muñoz",
+      "correo": " VALENTINA20 at CORREO.CL"
+    }
+  ]
+}

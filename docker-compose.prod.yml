@@ -45,6 +45,11 @@ services:
       MONGO_PASSWORD: ${MONGO_PASSWORD:?Define MONGO_PASSWORD en .env}
       MS_DIGITALIZACION_URL: ${MS_DIGITALIZACION_URL:-http://localhost:8081}
       MS_REPORTES_URL: ${MS_REPORTES_URL:-http://localhost:8082}
+      LOG_LEVEL: ${LOG_LEVEL:-}
+      SERVICE_ROLE: ${SERVICE_ROLE:-}
+      SERVICE_DEPENDS_ON: ${SERVICE_DEPENDS_ON:-}
+      SERVICE_CONSUMERS: ${SERVICE_CONSUMERS:-}
+      SERVICE_CAPABILITIES: ${SERVICE_CAPABILITIES:-}
     depends_on:
       mongodb:
         condition: service_healthy

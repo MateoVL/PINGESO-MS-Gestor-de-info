@@ -32,6 +32,32 @@ Desde `frontend/`, ejecuta `npm ci` y `npm run dev`. En el panel, pulsa **Proces
 
 El lote de ejemplo simula una respuesta OCR con folios, nombres y correos. La prueba se ejecuta en el navegador y sus resultados son temporales.
 
+## Estructura del backend
+
+Cada petición recorre `routes → controllers → services`.
+
+| Carpeta | Responsabilidad |
+|---|---|
+| `cmd/api` | Carga la configuración, crea las dependencias y levanta el servidor |
+| `internal/config` | Lee y valida las variables de entorno |
+| `internal/database` | Cliente de MongoDB |
+| `internal/models` | Estructuras de entrada y salida de la API |
+| `internal/services` | Lógica de negocio, sin depender de HTTP |
+| `internal/controllers` | Leen la petición, llaman al servicio y responden JSON |
+| `internal/routes` | Arman el router con sus middlewares y registran las rutas de cada recurso |
+| `internal/middleware` | Request ID, logs, recuperación de errores inesperados y CORS |
+| `internal/utils` | Errores de la API y helpers compartidos |
+
+Todos los errores usan el mismo formato, y `request_id` coincide con el encabezado `X-Request-ID` y con los logs:
+
+```json
+{"error": {"code": "not_found", "message": "El recurso solicitado no existe", "request_id": "..."}}
+```
+
+Los controladores responden errores solo con `utils.RespondError`. Un error que no está definido en `internal/utils/errors.go` llega al cliente como un 500 genérico, y su causa real queda en los logs.
+
+La identidad que muestra `/api/health` se configura con `SERVICE_ROLE`, `SERVICE_DEPENDS_ON`, `SERVICE_CONSUMERS` y `SERVICE_CAPABILITIES`.
+
 ## Rutas de diagnóstico
 
 | Ruta | Resultado |
