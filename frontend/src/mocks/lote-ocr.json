@@ -1,0 +1,7 @@
+[
+  { "folio": " doc-001 ", "nombre": "  Camila   Soto ", "correo": " CAMILA@EXAMPLE.COM " },
+  { "folio": "doc-002", "nombre": "Diego Pérez ", "correo": "diego@example.com" },
+  { "folio": "doc-003", "nombre": " ", "correo": "prueba@example.com" },
+  { "folio": "doc-004", "nombre": "Elena Díaz", "correo": "elena.example.com" },
+  { "folio": " DOC-001", "nombre": "Camila Soto", "correo": "camila@example.com" }
+]

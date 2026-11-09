@@ -1,172 +1,73 @@
-# MS Gestor de Información - PINGESO
+# Pipeline de Información · Grupo 2 · PINGESO
 
-Microservicio base de **Gestor de Información**, desarrollado en el marco del ramo **Proyecto de Ingeniería de Software (PINGESO)** para una arquitectura de **Línea de Productos de Software (LPS)**.
+Base del microservicio **PT2** para el Hito 0 de Entorno y Seguridad. Su objetivo en la Línea de Productos de Software es recibir datos masivos del **PT5, Extractor de Datos OCR**, limpiarlos, validarlos y almacenarlos en MongoDB para que el **PT1, Motor de Reportes**, pueda consumirlos.
 
----
+En el Hito 0 se entrega el entorno de Go, Vue y MongoDB, junto con el pipeline de calidad y seguridad. Para el Hito 1 quedan la publicación del contrato OpenAPI 3.1.0 y los endpoints con datos de prueba CSV o JSON. La lógica real de ETL y su persistencia corresponden al Hito 2.
 
-## 📌 Contexto en la Línea de Productos de Software (LPS)
+## Levantar el entorno
 
-En el ecosistema de la línea de productos, este microservicio es el encargado de recibir información no estructurada/estructurada, procesarla, ordenarla y dejarla disponible para los servicios consumidores:
+Desde la raíz, con Docker y Docker Compose v2 en ejecución:
 
-| Microservicio | Qué contiene | Dependencias |
+```bash
+docker compose up --build
+```
+
+Abre el [panel del Grupo 2](http://localhost:3000). El panel consulta la [API de diagnóstico](http://localhost:8080/api/health), que hace un ping a MongoDB y muestra el resultado. Para detener los servicios, ejecuta `docker compose down`.
+
+| Componente | Tecnología | Ubicación |
 |---|---|---|
-| **MS Reportes** | Generación de reportes finales (PDF, Excel) | Depende de: Plantillas de reporte, **Gestor de Info** |
-| **MS Gestor de Info (Este repo)** | **Carga de información, procesamiento, orden** | **Depende de: Digitalización** |
-| **MS Plantillas de reporte** | Guardar, crear y versionar plantillas | Depende de: Usuarios y Roles |
-| **MS Formularios** | Motor CRUD y recolección dinámica de respuestas | Depende de: Usuarios y Roles |
-| **MS Digitalización** | Captura de documentos, OCR | Depende de: Gestor Documental |
-| **MS Usuarios y Roles** | Perfiles (MAD), Autenticación, Roles | Independiente (Servicio Base) |
-| **MS Gestor Documental** | Almacenamiento de archivos, firmas | Depende de: Usuarios y Roles |
-| **MS Auditoría** | Trazabilidad de eventos, logs centrales | Recibe eventos de todos los MS |
-| **MS Agenda** | Gestión de reservas, bloqueos y calendarios | Depende de: Notificaciones |
-| **MS Notificaciones** | Gateway centralizado de correos y alertas | Depende de: Usuarios y Roles |
+| Backend | Go y Gin | `backend/` |
+| Frontend | Vue 3 con Composition API y Vite | `frontend/` |
+| Base de datos | MongoDB 8.0 | `scripts/init-mongo.js` crea el usuario de aplicación |
 
----
+El entorno de desarrollo tiene valores locales por defecto. Para personalizarlos, copia `.env.example` a `.env` (`Copy-Item .env.example .env` en PowerShell) y edita el archivo. MongoDB guarda sus datos en un volumen propio. El usuario de aplicación tiene rol `readWrite` solo sobre `MONGO_DATABASE`, y el script de creación se ejecuta cuando se inicializa un volumen nuevo. Si cambias credenciales en un volumen existente, actualiza el usuario en MongoDB antes de reiniciar la aplicación.
 
-## 🛠️ Stack Tecnológico
+Para ejecutar Go y Vue en el equipo, copia primero `.env.example` a `.env`. Levanta MongoDB con `make local-db` y abre dos terminales para ejecutar `make local-back` y `make local-front`. Se requiere Go 1.26 o superior y Node.js 24 actualizado. Si cambias el puerto de MongoDB, ajusta también `MONGO_URI` para el backend nativo.
 
-- **Backend:** Go 1.23 con framework Gin HTTP, CORS configurado, pool de conexiones y apagado elegante (*graceful shutdown*).
-- **Frontend:** Vue 3 + Vite, diseño moderno responsive con monitor de salud y métricas de conectividad.
-- **Base de Datos:** PostgreSQL 16 con script de inicialización (`scripts/init-db.sql`) y pruebas de salud automáticas (*healthcheck*).
-- **Orquestación:** Docker & Docker Compose (ambientes separados para desarrollo con *hot reload* y producción multi-stage).
-- **Automatización:** `Makefile` con comandos estandarizados.
+La variante de producción se construye con `docker compose -f docker-compose.prod.yml up -d --build`. Usa credenciales propias en `.env`. MongoDB queda en la red interna y Nginx reenvía `/api/` al backend desde el mismo origen del frontend.
 
----
+### Probar el pipeline con datos simulados
 
-## 📁 Estructura del Repositorio
+Desde `frontend/`, ejecuta `npm ci` y `npm run dev`. En el panel, pulsa **Procesar lote** para ver los registros normalizados y el motivo de cada rechazo. Puedes editar el JSON o recuperar los datos con **Restaurar ejemplo**.
+
+El lote de ejemplo simula una respuesta OCR con folios, nombres y correos. La prueba se ejecuta en el navegador y sus resultados son temporales.
+
+## Rutas de diagnóstico
+
+| Ruta | Resultado |
+|---|---|
+| `GET /health` y `GET /api/health` | HTTP 200 si MongoDB responde o 503 con estado `degraded` si está indisponible |
+| `GET /api/info` | Identificación del PT2 y rutas previstas para una fase posterior |
+
+## Calidad y seguridad del Hito 0
+
+El workflow `hito-0.yml` se ejecuta en pull requests hacia `main`, pushes a `main` y ejecuciones manuales. En GitHub, los resultados de Trivy y la comprobación de integración se ven en la pestaña **Actions**.
+
+- **Pruebas y cobertura.** Go genera `backend/coverage.out` y Vue genera `frontend/coverage/lcov.info`. El workflow también compila Vue y verifica que el frontend pueda consultar el backend y MongoDB por la ruta de Nginx.
+- **Trivy.** Escanea dependencias del repositorio e imágenes de backend y frontend. En el Hito 0 publica los hallazgos en el log para establecer una línea base. Los umbrales de aprobación corresponden al Hito 2.
+- **SonarQube.** Analiza Go y Vue en `main` e importa ambos informes de cobertura. El archivo `sonar-project.properties` concentra su configuración.
+
+### Conectar SonarQube en GitHub
+
+1. En una instancia de SonarQube Server accesible desde el runner de GitHub, crea el proyecto con clave `pingeso-grupo-2-pipeline-info` y genera un token de análisis.
+2. En **Settings → Secrets and variables → Actions**, crea la variable de repositorio `SONAR_HOST_URL` con la URL del servidor y el secreto `SONAR_TOKEN` con el token.
+3. Ejecuta **Hito 0 · Calidad y seguridad** desde **Actions** en la rama `main` y revisa el resultado del análisis y la cobertura en SonarQube.
+
+Con Docker, puedes levantar una instancia local de SonarQube Community Build para la demostración:
+
+```bash
+docker run -d --name sonar-pingeso -p 127.0.0.1:9000:9000 sonarqube:community
+```
+
+Crea el proyecto en el [panel local de SonarQube](http://localhost:9000). Genera los reportes con `make test` y ejecuta `sonar-scanner` desde la raíz con `SONAR_HOST_URL` y `SONAR_TOKEN` definidos en el entorno de tu terminal. Usa un escáner con aprovisionamiento automático de Java o configura `JAVA_HOME` con JDK 21 o superior. El runner alojado por GitHub necesita una URL de SonarQube a la que pueda conectarse.
+
+### Pruebas sin Makefile
 
 ```text
-PINGESO-MS-Gestor-de-info/
-├── backend/
-│   ├── cmd/api/main.go          # Punto de entrada de la API en Go
-│   ├── internal/
-│   │   ├── config/config.go     # Carga de variables de entorno (.env)
-│   │   ├── database/database.go # Conexión resiliente a PostgreSQL
-│   │   └── handlers/health.go   # Handlers HTTP de salud y estado
-│   ├── go.mod / go.sum          # Dependencias de Go
-│   ├── Dockerfile.dev           # Contenedor de desarrollo Go
-│   └── Dockerfile               # Contenedor multi-stage optimizado para producción
-├── frontend/
-│   ├── src/
-│   │   ├── App.vue              # Vista principal con diagnósticos de conexión
-│   │   ├── main.js              # Inicialización de Vue 3
-│   │   └── assets/main.css      # Sistema de diseño y estilos CSS
-│   ├── index.html               # Plantilla HTML con tipografía moderna
-│   ├── package.json             # Dependencias de Vue y Vite
-│   ├── vite.config.js           # Configuración de Vite con polling para Docker
-│   ├── nginx.conf               # Servidor web Nginx para producción
-│   ├── Dockerfile.dev           # Contenedor de desarrollo Node + Vite
-│   └── Dockerfile               # Contenedor multi-stage de producción (Nginx Alpine)
-├── scripts/
-│   └── init-db.sql              # Script SQL inicial de PostgreSQL
-├── .env.example                 # Plantilla de variables de entorno documentada y funcional
-├── .gitignore                   # Exclusión de credenciales (.env), binarios y node_modules
-├── Makefile                     # Automatización de tareas (local, docker, prod)
-├── docker-compose.yml           # Orquestación de desarrollo local (hot reload)
-├── docker-compose.prod.yml      # Orquestación de producción (multi-stage + Nginx)
-└── README.md
+cd backend
+go test -coverprofile=coverage.out ./...
+cd ../frontend
+npm ci
+npm run test:coverage
+npm run build
 ```
-
----
-
-## 🔐 Manejo de Variables de Entorno (.env)
-
-> [!IMPORTANT]
-> **Nunca incluyas credenciales sensibles ni archivos `.env` en los commits.** El archivo `.gitignore` ya excluye `.env`.
-
-- **`.env.example`**: Archivo de ejemplo completamente funcional para levantar el proyecto de forma inmediata tanto en local nativo como con Docker Compose.
-- **`.env`**: Archivo de variables reales para tu entorno local o de producción. Para crearlo a partir del ejemplo:
-  ```bash
-  make env
-  # o manualmente:
-  cp .env.example .env
-  ```
-- **Producción:** En producción, cada administrador o desarrollador debe crear su propio `.env` con contraseñas seguras, certificados SSL y URLs reales de los demás microservicios.
-
----
-
-## 🚀 Guía de Uso Rápido con `Makefile`
-
-Para ver todos los comandos disponibles en consola:
-```bash
-make help
-```
-
-### 1. Ejecutar en Local con Docker Compose (Desarrollo)
-
-Levanta PostgreSQL, Backend (Go) y Frontend (Vue) con recarga en vivo (*hot-reloading*):
-
-```bash
-# En primer plano (muestra todos los logs combinados):
-make dev
-
-# O en segundo plano (detached):
-make dev-d
-```
-
-- **Frontend:** [http://localhost:3000](http://localhost:3000)
-- **Backend API:** [http://localhost:8080](http://localhost:8080)
-- **API Healthcheck:** [http://localhost:8080/api/health](http://localhost:8080/api/health)
-- **PostgreSQL:** `localhost:5432`
-
-Para ver los logs en segundo plano o detener los servicios:
-```bash
-make logs   # Ver logs en vivo
-make down   # Detener contenedores
-```
-
----
-
-### 2. Ejecutar como Producción con Docker Compose
-
-Utiliza las imágenes multi-stage optimizadas (binario estático de Go y Frontend servido en Nginx Alpine):
-
-```bash
-# Requiere que exista un archivo .env configurado
-make prod
-```
-
-Para detener o ver logs del entorno de producción:
-```bash
-make logs-prod
-make down-prod
-```
-
----
-
-### 3. Ejecución Local Nativa (En el Host)
-
-Si deseas ejecutar los componentes directamente en tu máquina:
-
-```bash
-# 1. Levantar solo la base de datos PostgreSQL en Docker
-make local-db
-
-# 2. En una terminal, ejecutar el Backend Go (conectándose a localhost:5432)
-make local-back
-
-# 3. En otra terminal, ejecutar el Frontend Vue
-make local-front
-```
-
----
-
-### 4. Pruebas y Limpieza
-
-```bash
-# Ejecutar pruebas unitarias de Go
-make test
-
-# Limpiar contenedores, volúmenes de desarrollo y redes
-make clean
-```
-
----
-
-## 📡 Endpoints Base Disponibles
-
-| Método | Ruta | Descripción |
-|---|---|---|
-| `GET` | `/health` | Diagnóstico general del servicio y estado de conexión a la BD |
-| `GET` | `/api/health` | Diagnóstico de salud con detalles de LPS y dependencias |
-| `GET` | `/api/info` | Endpoint base placeholder para futuras funcionalidades de ingesta y orden |

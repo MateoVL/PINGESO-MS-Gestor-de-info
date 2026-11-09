@@ -27,7 +27,7 @@ env: ## Crea el archivo .env a partir de .env.example si no existe
 # ==============================================================================
 # Modo 1: Local con Docker Compose (Desarrollo con Hot Reload)
 # ==============================================================================
-dev: env ## Ejecuta el entorno de desarrollo local con Docker Compose (hot-reload)
+dev: env ## Ejecuta el entorno de desarrollo local con Docker Compose
 	@echo "--> Levantando entorno de desarrollo con Docker Compose..."
 	docker compose --env-file $(ENV_FILE) -f docker-compose.yml up --build
 
@@ -58,44 +58,30 @@ prod: check-prod-env ## Construye y ejecuta el entorno de producción con Docker
 
 down-prod: ## Detiene los contenedores de producción
 	@echo "--> Deteniendo contenedores de producción..."
-	docker compose -f docker-compose.prod.yml down
+	docker compose --env-file $(ENV_FILE) -f docker-compose.prod.yml down
 
 logs-prod: ## Sigue los logs en tiempo real de producción
-	docker compose -f docker-compose.prod.yml logs -f
+	docker compose --env-file $(ENV_FILE) -f docker-compose.prod.yml logs -f
 
 # ==============================================================================
 # Modo 3: Ejecución Local Nativa (Host)
 # ==============================================================================
-local-db: env ## Levanta únicamente la base de datos PostgreSQL en Docker para desarrollo nativo
-	@echo "--> Levantando base de datos PostgreSQL local en puerto 5432..."
-	docker compose --env-file $(ENV_FILE) -f docker-compose.yml up -d postgres
+local-db: env ## Levanta únicamente MongoDB en Docker para desarrollo nativo
+	docker compose --env-file $(ENV_FILE) -f docker-compose.yml up -d --wait mongodb
 
 local-back: env ## Ejecuta el backend Go localmente en el host
-	@echo "--> Iniciando backend Go en local..."
-	@if command -v go >/dev/null 2>&1; then \
-		cd backend && DB_HOST=localhost go run cmd/api/main.go; \
-	else \
-		echo "Go no encontrado en el host. Ejecutando mediante contenedor temporal..."; \
-		docker run --rm -it -v "$$(pwd)/backend:/app" -w /app --network host -e DB_HOST=localhost golang:1.23-alpine go run cmd/api/main.go; \
-	fi
+	cd backend && go run ./cmd/api
 
 local-front: env ## Ejecuta el frontend Vue localmente en el host
-	@echo "--> Iniciando frontend Vue en local..."
-	@if command -v npm >/dev/null 2>&1; then \
-		cd frontend && npm install && npm run dev; \
-	else \
-		echo "Node/npm no encontrado en el host. Ejecutando mediante contenedor temporal..."; \
-		docker run --rm -it -v "$$(pwd)/frontend:/app" -w /app -p 3000:3000 node:20-alpine sh -c "npm install && npm run dev"; \
-	fi
+	cd frontend && npm ci && npm run dev
 
 # ==============================================================================
 # Mantenimiento y Pruebas
 # ==============================================================================
-test: ## Ejecuta pruebas unitarias del backend
-	@echo "--> Ejecutando tests de backend..."
-	docker run --rm -v "$$(pwd)/backend:/app" -w /app golang:1.23-alpine go test ./...
+test: ## Ejecuta pruebas de Go y Vue y genera sus reportes de cobertura
+	cd backend && go test -coverprofile=coverage.out ./...
+	cd frontend && npm ci && npm run test:coverage
 
 clean: ## Limpia contenedores, redes y volúmenes temporales de Docker
 	@echo "--> Limpiando contenedores huérfanos y volúmenes de desarrollo..."
 	docker compose -f docker-compose.yml down -v --remove-orphans
-	docker compose -f docker-compose.prod.yml down -v --remove-orphans

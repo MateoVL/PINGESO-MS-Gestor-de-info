@@ -1,5 +1,5 @@
 # Etapa 1: Compilación
-FROM golang:1.23-alpine AS builder
+FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
 
@@ -11,12 +11,12 @@ RUN go mod download
 COPY . .
 
 # Compilar binario estático optimizado
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+RUN CGO_ENABLED=0 go build \
     -ldflags="-s -w" \
-    -o /app/server cmd/api/main.go
+    -o /app/server ./cmd/api
 
 # Etapa 2: Imagen mínima de producción
-FROM alpine:3.20
+FROM alpine:3.23
 
 WORKDIR /app
 

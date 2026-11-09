@@ -6,6 +6,9 @@
 *.dylib
 bin/
 dist/
+.cache/
+coverage/
+.scannerwork/
 
 # Test binary, built with `go test -c`
 *.test

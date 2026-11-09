@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"database/sql"
+	"context"
 	"net/http"
 	"time"
 
@@ -10,29 +10,29 @@ import (
 )
 
 type Handler struct {
-	cfg       *config.Config
-	db        *sql.DB
-	startTime time.Time
+	cfg          *config.Config
+	pingDatabase func(context.Context) error
+	startTime    time.Time
 }
 
-func NewHandler(cfg *config.Config, db *sql.DB) *Handler {
+func NewHandler(cfg *config.Config, pingDatabase func(context.Context) error) *Handler {
 	return &Handler{
-		cfg:       cfg,
-		db:        db,
-		startTime: time.Now(),
+		cfg:          cfg,
+		pingDatabase: pingDatabase,
+		startTime:    time.Now(),
 	}
 }
 
 // HealthResponse estructura la respuesta del endpoint de salud
 type HealthResponse struct {
-	Status      string            `json:"status"`
-	ServiceName string            `json:"service_name"`
-	Environment string            `json:"environment"`
-	Uptime      string            `json:"uptime"`
-	Timestamp   string            `json:"timestamp"`
-	Database    DatabaseStatus    `json:"database"`
-	Role        string            `json:"role"`
-	LineOfWork  LineOfWorkInfo    `json:"line_of_work"`
+	Status      string         `json:"status"`
+	ServiceName string         `json:"service_name"`
+	Environment string         `json:"environment"`
+	Uptime      string         `json:"uptime"`
+	Timestamp   string         `json:"timestamp"`
+	Database    DatabaseStatus `json:"database"`
+	Role        string         `json:"role"`
+	LineOfWork  LineOfWorkInfo `json:"line_of_work"`
 }
 
 type DatabaseStatus struct {
@@ -49,21 +49,17 @@ type LineOfWorkInfo struct {
 
 // Health verifica el estado del microservicio y la conexión a la base de datos
 func (h *Handler) Health(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
+	defer cancel()
+
 	dbStatus := DatabaseStatus{
-		Engine: "PostgreSQL",
+		Engine:  "MongoDB",
+		Message: "MongoDB no está disponible",
 	}
 
-	if h.db != nil {
-		if err := h.db.Ping(); err == nil {
-			dbStatus.Connected = true
-			dbStatus.Message = "Base de datos conectada y operativa"
-		} else {
-			dbStatus.Connected = false
-			dbStatus.Message = err.Error()
-		}
-	} else {
-		dbStatus.Connected = false
-		dbStatus.Message = "Sin conexión inicial a la base de datos"
+	if err := h.pingDatabase(ctx); err == nil {
+		dbStatus.Connected = true
+		dbStatus.Message = "Base de datos conectada y operativa"
 	}
 
 	overallStatus := "healthy"
@@ -80,18 +76,18 @@ func (h *Handler) Health(c *gin.Context) {
 		Uptime:      time.Since(h.startTime).Round(time.Second).String(),
 		Timestamp:   time.Now().UTC().Format(time.RFC3339),
 		Database:    dbStatus,
-		Role:        "MS Gestor de Información (Línea de Productos de Software)",
+		Role:        "Grupo 2 · PT2 · Pipeline de Información",
 		LineOfWork: LineOfWorkInfo{
 			DependsOn: []string{
-				"MS Digitalización (Captura de documentos, OCR)",
+				"PT5 · Extractor de Datos OCR",
 			},
 			Consumers: []string{
-				"MS Reportes (Generación de reportes finales)",
+				"PT1 · Motor de Reportes",
 			},
 			Capabilities: []string{
 				"Carga de información",
-				"Procesamiento de datos",
-				"Orden y estructura de datos",
+				"Limpieza y validación de datos",
+				"Inserción masiva de datos",
 			},
 		},
 	})
@@ -100,7 +96,7 @@ func (h *Handler) Health(c *gin.Context) {
 // InfoBase endpoint de base para comprobar que la ruta de API responde
 func (h *Handler) InfoBase(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Base de MS Gestor de Info lista para implementar lógica de negocio.",
+		"message": "Grupo 2 · Pipeline de Información · Hito 0",
 		"endpoints_planeados": []string{
 			"POST /api/v1/info/ingest (Carga de información recibida de Digitalización)",
 			"POST /api/v1/info/process (Procesamiento de datos cargados)",

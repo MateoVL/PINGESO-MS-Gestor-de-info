@@ -1,22 +1,27 @@
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: gestor_info_db_prod
+  mongodb:
+    image: mongo:8.0
+    container_name: gestor_info_mongo_prod
     restart: always
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
-    ports:
-      - "${DB_PORT:-5432}:5432"
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:?Define MONGO_ROOT_USER en .env}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Define MONGO_ROOT_PASSWORD en .env}
+      MONGO_DATABASE: ${MONGO_DATABASE:-gestor_info_db}
+      MONGO_USER: ${MONGO_USER:?Define MONGO_USER en .env}
+      MONGO_PASSWORD: ${MONGO_PASSWORD:?Define MONGO_PASSWORD en .env}
     volumes:
-      - postgres_prod_data:/var/lib/postgresql/data
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+      - mongo_prod_data:/data/db
+      - ./scripts/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      test:
+        - CMD-SHELL
+        - >-
+          mongosh --quiet --host mongodb --username "$$MONGO_USER" --password "$$MONGO_PASSWORD"
+          --authenticationDatabase "$$MONGO_DATABASE" --eval 'if (db.adminCommand({ping: 1}).ok !== 1) quit(1)'
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 15s
     networks:
       - gestor_net_prod
 
@@ -33,17 +38,15 @@ services:
       APP_NAME: ${APP_NAME:-MS Gestor de Información}
       BACKEND_PORT: 8080
       GIN_MODE: release
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-      DB_NAME: ${DB_NAME}
-      DB_SSLMODE: ${DB_SSLMODE:-require}
-      MS_DIGITALIZACION_URL: ${MS_DIGITALIZACION_URL}
-      MS_REPORTES_URL: ${MS_REPORTES_URL}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      MONGO_URI: mongodb://mongodb:27017
+      MONGO_DATABASE: ${MONGO_DATABASE:-gestor_info_db}
+      MONGO_USER: ${MONGO_USER:?Define MONGO_USER en .env}
+      MONGO_PASSWORD: ${MONGO_PASSWORD:?Define MONGO_PASSWORD en .env}
+      MS_DIGITALIZACION_URL: ${MS_DIGITALIZACION_URL:-http://localhost:8081}
+      MS_REPORTES_URL: ${MS_REPORTES_URL:-http://localhost:8082}
     depends_on:
-      postgres:
+      mongodb:
         condition: service_healthy
     networks:
       - gestor_net_prod
@@ -53,7 +56,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
     container_name: gestor_info_frontend_prod
     restart: always
     ports:
@@ -64,7 +67,7 @@ services:
       - gestor_net_prod
 
 volumes:
-  postgres_prod_data:
+  mongo_prod_data:
 
 networks:
   gestor_net_prod:

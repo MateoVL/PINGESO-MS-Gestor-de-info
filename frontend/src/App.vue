@@ -12,7 +12,7 @@
             </svg>
           </div>
           <div>
-            <div class="badge-mini">PINGESO • LPS</div>
+            <div class="badge-mini">PINGESO · Grupo 2 · Hito 0</div>
             <h1 class="service-title">MS Gestor de Información</h1>
           </div>
         </div>
@@ -34,11 +34,13 @@
 
     <!-- Main Content -->
     <main class="main-content">
+      <PipelineDemo />
+
       <!-- Status Banner -->
-      <section class="banner" :class="overallStatusClass">
+      <section class="banner" :class="overallStatusClass" aria-live="polite">
         <div class="banner-icon">
-          <span v-if="health && health.status === 'healthy'">✓</span>
-          <span v-else-if="loading">⏳</span>
+          <span v-if="loading">⏳</span>
+          <span v-else-if="health?.status === 'healthy'">✓</span>
           <span v-else>!</span>
         </div>
         <div class="banner-body">
@@ -58,7 +60,7 @@
             <div class="card-icon icon-go">Go</div>
             <div>
               <h3>Backend API</h3>
-              <p class="card-subtitle">Go 1.23 • Gin HTTP Server</p>
+              <p class="card-subtitle">Go • Gin HTTP Server</p>
             </div>
             <span class="status-pill" :class="backendConnected ? 'pill-ok' : 'pill-err'">
               {{ backendConnected ? 'ONLINE' : 'OFFLINE' }}
@@ -67,7 +69,7 @@
           <div class="card-body">
             <div class="metric-row">
               <span class="metric-label">Endpoint</span>
-              <span class="metric-val mono">{{ apiBaseUrl }}/health</span>
+              <span class="metric-val mono">{{ apiBaseUrl }}/api/health</span>
             </div>
             <div class="metric-row">
               <span class="metric-label">Uptime</span>
@@ -83,10 +85,10 @@
         <!-- Database Card -->
         <div class="card">
           <div class="card-header">
-            <div class="card-icon icon-db">PG</div>
+            <div class="card-icon icon-db">DB</div>
             <div>
               <h3>Base de Datos</h3>
-              <p class="card-subtitle">PostgreSQL 16</p>
+              <p class="card-subtitle">MongoDB</p>
             </div>
             <span class="status-pill" :class="dbConnected ? 'pill-ok' : 'pill-err'">
               {{ dbConnected ? 'CONECTADA' : 'DESCONECTADA' }}
@@ -95,15 +97,11 @@
           <div class="card-body">
             <div class="metric-row">
               <span class="metric-label">Motor</span>
-              <span class="metric-val">{{ health?.database?.engine || 'PostgreSQL' }}</span>
+              <span class="metric-val">{{ health?.database?.engine || 'MongoDB' }}</span>
             </div>
             <div class="metric-row">
               <span class="metric-label">Estado</span>
               <span class="metric-val">{{ health?.database?.message || (backendConnected ? 'Sin respuesta' : 'Inaccesible') }}</span>
-            </div>
-            <div class="metric-row">
-              <span class="metric-label">Init Script</span>
-              <span class="metric-val mono">scripts/init-db.sql</span>
             </div>
           </div>
         </div>
@@ -121,15 +119,15 @@
           <div class="card-body">
             <div class="metric-row">
               <span class="metric-label">Puerto</span>
-              <span class="metric-val mono">:3000</span>
+              <span class="metric-val mono">{{ frontendPort }}</span>
             </div>
             <div class="metric-row">
-              <span class="metric-label">VITE_API_BASE_URL</span>
-              <span class="metric-val mono">{{ apiBaseUrl }}</span>
+              <span class="metric-label">Origen de la API</span>
+              <span class="metric-val mono">{{ apiBaseUrl || 'Mismo origen' }}</span>
             </div>
             <div class="metric-row">
-              <span class="metric-label">Hot Reload</span>
-              <span class="metric-val">Habilitado</span>
+              <span class="metric-label">Paquete de trabajo</span>
+              <span class="metric-val">PT2</span>
             </div>
           </div>
         </div>
@@ -145,19 +143,19 @@
         <div class="arch-flow">
           <div class="arch-node prev-node">
             <span class="node-tag">Dependencia Upstream</span>
-            <h4>MS Digitalización</h4>
-            <p>Captura de documentos, OCR y digitalización</p>
+            <h4>PT5 · Extractor de Datos OCR</h4>
+            <p>Extrae texto de documentos y entrega datos al pipeline.</p>
           </div>
 
           <div class="arch-arrow">➔</div>
 
           <div class="arch-node current-node">
             <span class="node-tag current-tag">Este Microservicio</span>
-            <h4>MS Gestor de Información</h4>
+            <h4>PT2 · Pipeline de Información</h4>
             <ul>
               <li>📥 Carga de información (Ingesta)</li>
-              <li>⚙️ Procesamiento y validación</li>
-              <li>🗂️ Ordenamiento de datos para reporte</li>
+              <li>⚙️ Limpieza y validación</li>
+              <li>🗂️ Inserción masiva de datos</li>
             </ul>
           </div>
 
@@ -165,7 +163,7 @@
 
           <div class="arch-node next-node">
             <span class="node-tag">Dependencia Downstream</span>
-            <h4>MS Reportes</h4>
+            <h4>PT1 · Motor de Reportes</h4>
             <p>Generación de reportes finales (PDF, Excel)</p>
           </div>
         </div>
@@ -181,7 +179,7 @@
         <div class="commands-grid">
           <div class="cmd-item">
             <div class="cmd-code"><code>make dev</code></div>
-            <div class="cmd-desc">Inicia el entorno de desarrollo local con Docker Compose (Hot reload en Go y Vue).</div>
+            <div class="cmd-desc">Inicia Go, Vue y MongoDB en el entorno de desarrollo.</div>
           </div>
           <div class="cmd-item">
             <div class="cmd-code"><code>make prod</code></div>
@@ -208,8 +206,10 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import PipelineDemo from './components/PipelineDemo.vue'
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '')
+const frontendPort = window.location.port || (window.location.protocol === 'https:' ? '443' : '80')
 const loading = ref(false)
 const health = ref(null)
 const error = ref(null)
@@ -235,12 +235,12 @@ const bannerTitle = computed(() => {
 const bannerSubtitle = computed(() => {
   if (loading.value) return 'Consultando endpoint /api/health...'
   if (backendConnected.value && dbConnected.value) {
-    return 'Go Gin API y PostgreSQL 16 están comunicándose correctamente.'
+    return 'La API de Go está conectada a MongoDB.'
   }
   if (backendConnected.value && !dbConnected.value) {
-    return `Error en BD: ${health.value?.database?.message || 'Revisar variables DB_*'}`
+    return health.value.database.message
   }
-  return error.value || 'Verifica que el contenedor de backend o el servidor Go esté corriendo en ' + apiBaseUrl
+  return error.value || 'Consulta el estado de la API para ver el diagnóstico.'
 })
 
 async function fetchHealth() {
@@ -249,10 +249,18 @@ async function fetchHealth() {
   const start = performance.now()
   try {
     const res = await fetch(`${apiBaseUrl}/api/health`, {
-      headers: { 'Accept': 'application/json' }
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(5000)
     })
-    latency.value = Math.round(performance.now() - start)
+    if (res.status !== 200 && res.status !== 503) {
+      throw new Error(`La API respondió con HTTP ${res.status}.`)
+    }
     const data = await res.json()
+    const connected = res.status === 200
+    if (data?.status !== (connected ? 'healthy' : 'degraded') || data.database?.connected !== connected) {
+      throw new Error('La API devolvió un diagnóstico inválido.')
+    }
+    latency.value = Math.round(performance.now() - start)
     health.value = data
   } catch (err) {
     latency.value = null
@@ -487,7 +495,7 @@ onMounted(() => {
 /* Grid */
 .grid-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
   gap: 1.25rem;
 }
 
@@ -581,6 +589,7 @@ onMounted(() => {
 .metric-row {
   display: flex;
   justify-content: space-between;
+  gap: 0.5rem;
   align-items: center;
   font-size: 0.85rem;
   padding-bottom: 0.4rem;
@@ -594,6 +603,8 @@ onMounted(() => {
 .metric-val {
   color: var(--text-main);
   font-weight: 500;
+  overflow-wrap: anywhere;
+  text-align: right;
 }
 
 .mono {
@@ -687,7 +698,7 @@ onMounted(() => {
 /* Commands */
 .commands-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
   gap: 1rem;
 }
 

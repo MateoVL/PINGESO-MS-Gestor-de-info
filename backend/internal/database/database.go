@@ -1,40 +1,25 @@
 package database
 
 import (
-	"database/sql"
-	"fmt"
-	"log"
-	"time"
+	"errors"
 
-	_ "github.com/lib/pq"
 	"github.com/mateo/ms-gestor-de-info/backend/internal/config"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-// ConnectDB inicializa el pool de conexiones con reintentos para soportar el arranque de Docker
-func ConnectDB(cfg *config.Config) (*sql.DB, error) {
-	dsn := cfg.DBDSN()
-	log.Printf("[DB] Conectando a PostgreSQL en %s:%s/%s...", cfg.DBHost, cfg.DBPort, cfg.DBName)
-
-	db, err := sql.Open("postgres", dsn)
-	if err != nil {
-		return nil, fmt.Errorf("error al abrir conexión con postgres: %w", err)
+// ConnectDB crea un cliente que puede recuperar la conexión si MongoDB cae.
+func ConnectDB(cfg *config.Config) (*mongo.Client, error) {
+	if (cfg.MongoUser == "") != (cfg.MongoPassword == "") {
+		return nil, errors.New("MONGO_USER y MONGO_PASSWORD deben configurarse juntos")
 	}
-
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(5)
-	db.SetConnMaxLifetime(5 * time.Minute)
-
-	// Reintentos automáticos durante arranque
-	maxRetries := 10
-	for i := 1; i <= maxRetries; i++ {
-		err = db.Ping()
-		if err == nil {
-			log.Println("[DB] ¡Conexión con PostgreSQL establecida exitosamente!")
-			return db, nil
-		}
-		log.Printf("[DB] Intento %d/%d fallido (%v). Reintentando en 2s...", i, maxRetries, err)
-		time.Sleep(2 * time.Second)
+	opts := options.Client().ApplyURI(cfg.MongoURI)
+	if cfg.MongoUser != "" {
+		opts.SetAuth(options.Credential{
+			AuthSource: cfg.MongoDatabase,
+			Username:   cfg.MongoUser,
+			Password:   cfg.MongoPassword,
+		})
 	}
-
-	return db, fmt.Errorf("no se pudo conectar a la base de datos tras %d intentos: %w", maxRetries, err)
+	return mongo.Connect(opts)
 }

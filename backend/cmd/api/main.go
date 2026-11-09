@@ -24,13 +24,18 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	// Conectar a la base de datos
+	// El driver conecta en segundo plano y el diagnóstico verifica la disponibilidad.
 	db, err := database.ConnectDB(cfg)
 	if err != nil {
-		log.Printf("[WARN] Base de datos no disponible inicialmente: %v", err)
-	} else {
-		defer db.Close()
+		log.Fatal("[DB] Configuración de MongoDB inválida. Revisa MONGO_URI y las credenciales.")
 	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := db.Disconnect(ctx); err != nil {
+			log.Printf("[DB] Error al cerrar el cliente: %v", err)
+		}
+	}()
 
 	router := gin.New()
 	router.Use(gin.Logger())
@@ -45,11 +50,13 @@ func main() {
 	}
 	corsConfig.AllowMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
 	corsConfig.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With"}
-	corsConfig.AllowCredentials = true
+	corsConfig.AllowCredentials = !corsConfig.AllowAllOrigins
 	router.Use(cors.New(corsConfig))
 
 	// Registrar Handlers
-	h := handlers.NewHandler(cfg, db)
+	h := handlers.NewHandler(cfg, func(ctx context.Context) error {
+		return db.Ping(ctx, nil)
+	})
 
 	// Rutas
 	router.GET("/health", h.Health)
