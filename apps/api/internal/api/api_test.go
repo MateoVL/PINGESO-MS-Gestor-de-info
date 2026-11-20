@@ -302,11 +302,11 @@ func TestStaticMockFilesAreValid(t *testing.T) {
 	if err := json.Unmarshal(DirtyBatchJSON, &req); err != nil || len(req.Registros) == 0 {
 		t.Fatalf("lote-sucio.json debe ser un lote válido: %v", err)
 	}
-	csv, err := ToCSV(req.Registros)
+	csvRecords, err := parseCSV(bytes.NewReader(DirtyBatchCSV))
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("lote-sucio.csv debe ser un CSV válido: %v", err)
 	}
-	if string(csv) != string(DirtyBatchCSV) {
+	if !reflect.DeepEqual(req.Registros, csvRecords) {
 		t.Error("lote-sucio.csv debe tener los mismos registros que lote-sucio.json")
 	}
 }
