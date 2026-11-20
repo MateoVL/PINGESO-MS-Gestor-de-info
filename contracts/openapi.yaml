@@ -1,0 +1,527 @@
+openapi: 3.1.0
+info:
+  title: MS Gestor de Información API
+  description: >-
+    Contrato OpenAPI 3.1 del microservicio PT2 (Gestor de Información · PINGESO).
+    Recibe lotes del Extractor de Datos OCR (PT5), limpia, valida y almacena
+    registros en PostgreSQL para el Motor de Reportes (PT1).
+  version: 1.0.0
+paths:
+  /api/health:
+    get:
+      operationId: get-health
+      summary: Diagnóstico de salud del servicio y PostgreSQL
+      tags:
+        - Diagnóstico
+      responses:
+        "200":
+          description: Servicio y base de datos operativos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        "503":
+          description: Servicio degradado (PostgreSQL no disponible)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /api/v1/lotes:
+    get:
+      operationId: list-lotes
+      summary: Listar lotes procesados del más reciente al más antiguo
+      tags:
+        - Lotes
+      parameters:
+        - name: pagina
+          in: query
+          description: Número de página (1-indexed)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+            example: 1
+        - name: tamano_pagina
+          in: query
+          description: Cantidad de lotes por página
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+            example: 50
+      responses:
+        "200":
+          description: Lista paginada de lotes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListaLotes"
+    post:
+      operationId: create-lote
+      summary: Recibir, limpiar y validar un lote de registros (JSON o CSV)
+      tags:
+        - Lotes
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          description: Clave de idempotencia para evitar duplicados en reintentos
+          schema:
+            type: string
+            maxLength: 128
+            example: lote-2026-001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SolicitudLote"
+          text/csv:
+            schema:
+              type: string
+      responses:
+        "200":
+          description: Reintento idempotente exitoso del lote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoteDetalle"
+        "201":
+          description: Lote procesado y creado
+          headers:
+            Location:
+              description: URI del lote creado
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoteDetalle"
+        "400":
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Conflicto con Idempotency-Key existente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/lotes/{id}:
+    get:
+      operationId: get-lote
+      summary: Obtener el detalle de un lote y sus rechazos
+      tags:
+        - Lotes
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUID del lote
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Detalle del lote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoteDetalle"
+        "404":
+          description: Lote no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/lotes/{id}/rechazos:
+    get:
+      operationId: list-lote-rechazos
+      summary: Listar los registros rechazados de un lote
+      tags:
+        - Lotes
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUID del lote
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Lista de rechazos del lote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListaRechazos"
+  /api/v1/registros:
+    get:
+      operationId: list-registros
+      summary: Listar registros limpios y validados
+      tags:
+        - Registros
+      parameters:
+        - name: pagina
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: tamano_pagina
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: folio
+          in: query
+          schema:
+            type: string
+        - name: lote_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Lista paginada de registros validados
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListaRegistros"
+  /api/v1/registros/{id}:
+    get:
+      operationId: get-registro
+      summary: Obtener un registro validado por su UUID
+      tags:
+        - Registros
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Registro validado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Registro"
+        "404":
+          description: Registro no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/mocks/datos-sucios:
+    get:
+      operationId: get-mocks-datos-sucios
+      summary: Generar lote simulado de datos sucios de OCR (solo entornos de desarrollo/prueba)
+      tags:
+        - Mocks
+      parameters:
+        - name: cantidad
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 5000
+            default: 20
+        - name: formato
+          in: query
+          schema:
+            type: string
+            enum: [json, csv]
+            default: json
+        - name: semilla
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Lote simulado generado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SolicitudLote"
+components:
+  schemas:
+    DatabaseStatus:
+      type: object
+      required:
+        - connected
+        - engine
+        - message
+      properties:
+        connected:
+          type: boolean
+          description: Indica si PostgreSQL respondió al ping
+          example: true
+        engine:
+          type: string
+          description: Motor de base de datos
+          example: PostgreSQL
+        message:
+          type: string
+          description: Mensaje descriptivo del estado
+          example: Base de datos conectada y operativa
+    LineOfWorkInfo:
+      type: object
+      required:
+        - depends_on
+        - consumers
+        - capabilities
+      properties:
+        depends_on:
+          type: array
+          items:
+            type: string
+        consumers:
+          type: array
+          items:
+            type: string
+        capabilities:
+          type: array
+          items:
+            type: string
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - service_name
+        - environment
+        - uptime
+        - timestamp
+        - database
+        - role
+        - line_of_work
+      properties:
+        status:
+          type: string
+          example: healthy
+        service_name:
+          type: string
+          example: MS Gestor de Información
+        environment:
+          type: string
+          example: development
+        uptime:
+          type: string
+          example: 1m30s
+        timestamp:
+          type: string
+          example: "2026-11-20T12:00:00Z"
+        database:
+          $ref: "#/components/schemas/DatabaseStatus"
+        role:
+          type: string
+          example: Gestor de Información
+        line_of_work:
+          $ref: "#/components/schemas/LineOfWorkInfo"
+    RegistroEntrada:
+      type: object
+      required:
+        - folio
+        - nombre
+        - correo
+      properties:
+        folio:
+          type: string
+          example: DOC-0001
+        nombre:
+          type: string
+          example: Camila Soto
+        correo:
+          type: string
+          example: camila@example.com
+    SolicitudLote:
+      type: object
+      required:
+        - origen
+        - referencia_externa
+        - registros
+      properties:
+        origen:
+          type: string
+          example: Extractor OCR
+        referencia_externa:
+          type: string
+          example: lote-2026-001
+        registros:
+          type: array
+          items:
+            $ref: "#/components/schemas/RegistroEntrada"
+    Lote:
+      type: object
+      required:
+        - id
+        - origen
+        - referencia_externa
+        - recibidos
+        - aceptados
+        - rechazados
+        - creado_en
+      properties:
+        id:
+          type: string
+          format: uuid
+        origen:
+          type: string
+        referencia_externa:
+          type: string
+        recibidos:
+          type: integer
+        aceptados:
+          type: integer
+        rechazados:
+          type: integer
+        creado_en:
+          type: string
+          format: date-time
+    Rechazo:
+      type: object
+      required:
+        - posicion
+        - folio
+        - motivos
+      properties:
+        posicion:
+          type: integer
+        folio:
+          type: string
+        motivos:
+          type: array
+          items:
+            type: string
+    LoteDetalle:
+      type: object
+      required:
+        - id
+        - origen
+        - referencia_externa
+        - recibidos
+        - aceptados
+        - rechazados
+        - creado_en
+        - rechazos
+      properties:
+        id:
+          type: string
+          format: uuid
+        origen:
+          type: string
+        referencia_externa:
+          type: string
+        recibidos:
+          type: integer
+        aceptados:
+          type: integer
+        rechazados:
+          type: integer
+        creado_en:
+          type: string
+          format: date-time
+        rechazos:
+          type: array
+          items:
+            $ref: "#/components/schemas/Rechazo"
+    Registro:
+      type: object
+      required:
+        - id
+        - lote_id
+        - posicion
+        - folio
+        - nombre
+        - correo
+        - creado_en
+      properties:
+        id:
+          type: string
+          format: uuid
+        lote_id:
+          type: string
+          format: uuid
+        posicion:
+          type: integer
+        folio:
+          type: string
+        nombre:
+          type: string
+        correo:
+          type: string
+        creado_en:
+          type: string
+          format: date-time
+    ListaLotes:
+      type: object
+      required:
+        - total
+        - pagina
+        - tamano_pagina
+        - elementos
+      properties:
+        total:
+          type: integer
+        pagina:
+          type: integer
+        tamano_pagina:
+          type: integer
+        elementos:
+          type: array
+          items:
+            $ref: "#/components/schemas/Lote"
+    ListaRegistros:
+      type: object
+      required:
+        - total
+        - pagina
+        - tamano_pagina
+        - elementos
+      properties:
+        total:
+          type: integer
+        pagina:
+          type: integer
+        tamano_pagina:
+          type: integer
+        elementos:
+          type: array
+          items:
+            $ref: "#/components/schemas/Registro"
+    ListaRechazos:
+      type: object
+      required:
+        - elementos
+      properties:
+        elementos:
+          type: array
+          items:
+            $ref: "#/components/schemas/Rechazo"
+    ErrorBody:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        request_id:
+          type: string
+        details: {}
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          $ref: "#/components/schemas/ErrorBody"
+

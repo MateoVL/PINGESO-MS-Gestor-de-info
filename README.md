@@ -1,172 +1,61 @@
-# MS Gestor de Información - PINGESO
+# Pipeline de Información · Grupo 2 · PINGESO
 
-Microservicio base de **Gestor de Información**, desarrollado en el marco del ramo **Proyecto de Ingeniería de Software (PINGESO)** para una arquitectura de **Línea de Productos de Software (LPS)**.
+Base del microservicio **PT2 (Gestor de Información)** alineada con las reglas de arquitectura, contrato API-first y versiones exactas de `AGENTS.md`. Su objetivo en la Línea de Productos de Software es recibir datos masivos del **PT5, Extractor de Datos OCR**, limpiarlos, validarlos y almacenarlos en PostgreSQL para que el **PT1, Motor de Reportes**, pueda consumirlos.
 
----
+## Stack y estructura del repositorio (`AGENTS.md`)
 
-## 📌 Contexto en la Línea de Productos de Software (LPS)
-
-En el ecosistema de la línea de productos, este microservicio es el encargado de recibir información no estructurada/estructurada, procesarla, ordenarla y dejarla disponible para los servicios consumidores:
-
-| Microservicio | Qué contiene | Dependencias |
+| Componente | Tecnología y Versión Exacta | Ubicación |
 |---|---|---|
-| **MS Reportes** | Generación de reportes finales (PDF, Excel) | Depende de: Plantillas de reporte, **Gestor de Info** |
-| **MS Gestor de Info (Este repo)** | **Carga de información, procesamiento, orden** | **Depende de: Digitalización** |
-| **MS Plantillas de reporte** | Guardar, crear y versionar plantillas | Depende de: Usuarios y Roles |
-| **MS Formularios** | Motor CRUD y recolección dinámica de respuestas | Depende de: Usuarios y Roles |
-| **MS Digitalización** | Captura de documentos, OCR | Depende de: Gestor Documental |
-| **MS Usuarios y Roles** | Perfiles (MAD), Autenticación, Roles | Independiente (Servicio Base) |
-| **MS Gestor Documental** | Almacenamiento de archivos, firmas | Depende de: Usuarios y Roles |
-| **MS Auditoría** | Trazabilidad de eventos, logs centrales | Recibe eventos de todos los MS |
-| **MS Agenda** | Gestión de reservas, bloqueos y calendarios | Depende de: Notificaciones |
-| **MS Notificaciones** | Gateway centralizado de correos y alertas | Depende de: Usuarios y Roles |
+| **Backend** | Go `1.26.5` (`go 1.26.0` + `toolchain go1.26.5`), Huma `v2.34.1`, pgx `v5.10.0`, sqlc `v1.29.0`, goose `v3.24.1` | `apps/api/` |
+| **Frontend** | Node `22.22.0`, pnpm `10.13.1`, React `19.2.8`, TypeScript `6.0.3`, Vite `8.1.5`, Tailwind `4.3.3` | `apps/web/` |
+| **Base de datos** | PostgreSQL `17.11` | `docker-compose.yaml` |
+| **Contrato API-first** | OpenAPI 3.1.0 generado desde structs de Huma y commiteado | `contracts/openapi.yaml` |
+| **Modos de falla** | Documentación de resiliencia, idempotencia y timeouts | `docs/modos-de-falla.md` |
 
----
-
-## 🛠️ Stack Tecnológico
-
-- **Backend:** Go 1.23 con framework Gin HTTP, CORS configurado, pool de conexiones y apagado elegante (*graceful shutdown*).
-- **Frontend:** Vue 3 + Vite, diseño moderno responsive con monitor de salud y métricas de conectividad.
-- **Base de Datos:** PostgreSQL 16 con script de inicialización (`scripts/init-db.sql`) y pruebas de salud automáticas (*healthcheck*).
-- **Orquestación:** Docker & Docker Compose (ambientes separados para desarrollo con *hot reload* y producción multi-stage).
-- **Automatización:** `Makefile` con comandos estandarizados.
-
----
-
-## 📁 Estructura del Repositorio
+### Estructura de carpetas
 
 ```text
-PINGESO-MS-Gestor-de-info/
-├── backend/
-│   ├── cmd/api/main.go          # Punto de entrada de la API en Go
-│   ├── internal/
-│   │   ├── config/config.go     # Carga de variables de entorno (.env)
-│   │   ├── database/database.go # Conexión resiliente a PostgreSQL
-│   │   └── handlers/health.go   # Handlers HTTP de salud y estado
-│   ├── go.mod / go.sum          # Dependencias de Go
-│   ├── Dockerfile.dev           # Contenedor de desarrollo Go
-│   └── Dockerfile               # Contenedor multi-stage optimizado para producción
-├── frontend/
-│   ├── src/
-│   │   ├── App.vue              # Vista principal con diagnósticos de conexión
-│   │   ├── main.js              # Inicialización de Vue 3
-│   │   └── assets/main.css      # Sistema de diseño y estilos CSS
-│   ├── index.html               # Plantilla HTML con tipografía moderna
-│   ├── package.json             # Dependencias de Vue y Vite
-│   ├── vite.config.js           # Configuración de Vite con polling para Docker
-│   ├── nginx.conf               # Servidor web Nginx para producción
-│   ├── Dockerfile.dev           # Contenedor de desarrollo Node + Vite
-│   └── Dockerfile               # Contenedor multi-stage de producción (Nginx Alpine)
-├── scripts/
-│   └── init-db.sql              # Script SQL inicial de PostgreSQL
-├── .env.example                 # Plantilla de variables de entorno documentada y funcional
-├── .gitignore                   # Exclusión de credenciales (.env), binarios y node_modules
-├── Makefile                     # Automatización de tareas (local, docker, prod)
-├── docker-compose.yml           # Orquestación de desarrollo local (hot reload)
-├── docker-compose.prod.yml      # Orquestación de producción (multi-stage + Nginx)
-└── README.md
+.
+├── apps/
+│   ├── api/
+│   │   ├── cmd/api/            # main: arranque, config, señales
+│   │   ├── cmd/openapi/        # exportador del contrato OpenAPI 3.1 desde Huma
+│   │   ├── internal/api/       # handlers Huma + structs del contrato + middlewares
+│   │   ├── internal/service/   # reglas de negocio, sin HTTP ni SQL + cliente HTTP 5s
+│   │   ├── internal/store/     # acceso a datos (PostgreSQL / memoria API-first)
+│   │   ├── internal/repository/# generado por sqlc, no editar
+│   │   ├── db/migrations/      # migraciones goose
+│   │   ├── db/queries/         # consultas SQL para sqlc
+│   │   ├── e2e/                # pruebas e2e + testdata/*.golden.md
+│   │   ├── Dockerfile          # golang:1.26.5-alpine3.23 -> distroless static-debian13:nonroot
+│   │   └── Dockerfile.migrate  # goose v3.24.1 sobre alpine:3.23.7
+│   └── web/
+│       ├── src/componentes/    # microcomponentes React (<nombre>.tsx, <nombre>.api.ts, use-<nombre>.ts)
+│       └── src/features/       # composición de vistas de desarrollo local
+├── contracts/openapi.yaml      # contrato OpenAPI 3.1 generado y commiteado
+├── docs/modos-de-falla.md
+├── docker-compose.yaml
+├── .env.example
+├── lefthook.yml
+└── .github/workflows/ci.yml
 ```
 
----
+## Levantar el entorno
 
-## 🔐 Manejo de Variables de Entorno (.env)
-
-> [!IMPORTANT]
-> **Nunca incluyas credenciales sensibles ni archivos `.env` en los commits.** El archivo `.gitignore` ya excluye `.env`.
-
-- **`.env.example`**: Archivo de ejemplo completamente funcional para levantar el proyecto de forma inmediata tanto en local nativo como con Docker Compose.
-- **`.env`**: Archivo de variables reales para tu entorno local o de producción. Para crearlo a partir del ejemplo:
-  ```bash
-  make env
-  # o manualmente:
-  cp .env.example .env
-  ```
-- **Producción:** En producción, cada administrador o desarrollador debe crear su propio `.env` con contraseñas seguras, certificados SSL y URLs reales de los demás microservicios.
-
----
-
-## 🚀 Guía de Uso Rápido con `Makefile`
-
-Para ver todos los comandos disponibles en consola:
-```bash
-make help
-```
-
-### 1. Ejecutar en Local con Docker Compose (Desarrollo)
-
-Levanta PostgreSQL, Backend (Go) y Frontend (Vue) con recarga en vivo (*hot-reloading*):
+Desde la raíz, con Docker y Docker Compose v2 en ejecución:
 
 ```bash
-# En primer plano (muestra todos los logs combinados):
-make dev
-
-# O en segundo plano (detached):
-make dev-d
+docker compose up --build
 ```
 
-- **Frontend:** [http://localhost:3000](http://localhost:3000)
-- **Backend API:** [http://localhost:8080](http://localhost:8080)
-- **API Healthcheck:** [http://localhost:8080/api/health](http://localhost:8080/api/health)
-- **PostgreSQL:** `localhost:5432`
+- Panel web (React 19): `http://localhost:3000`
+- Diagnóstico de salud: `http://localhost:8080/api/health`
+- Documentación interactiva OpenAPI 3.1 (`API_ENV=dev`): `http://localhost:8080/api/docs`
 
-Para ver los logs en segundo plano o detener los servicios:
-```bash
-make logs   # Ver logs en vivo
-make down   # Detener contenedores
-```
+## Comandos principales (`Makefile`)
 
----
-
-### 2. Ejecutar como Producción con Docker Compose
-
-Utiliza las imágenes multi-stage optimizadas (binario estático de Go y Frontend servido en Nginx Alpine):
-
-```bash
-# Requiere que exista un archivo .env configurado
-make prod
-```
-
-Para detener o ver logs del entorno de producción:
-```bash
-make logs-prod
-make down-prod
-```
-
----
-
-### 3. Ejecución Local Nativa (En el Host)
-
-Si deseas ejecutar los componentes directamente en tu máquina:
-
-```bash
-# 1. Levantar solo la base de datos PostgreSQL en Docker
-make local-db
-
-# 2. En una terminal, ejecutar el Backend Go (conectándose a localhost:5432)
-make local-back
-
-# 3. En otra terminal, ejecutar el Frontend Vue
-make local-front
-```
-
----
-
-### 4. Pruebas y Limpieza
-
-```bash
-# Ejecutar pruebas unitarias de Go
-make test
-
-# Limpiar contenedores, volúmenes de desarrollo y redes
-make clean
-```
-
----
-
-## 📡 Endpoints Base Disponibles
-
-| Método | Ruta | Descripción |
-|---|---|---|
-| `GET` | `/health` | Diagnóstico general del servicio y estado de conexión a la BD |
-| `GET` | `/api/health` | Diagnóstico de salud con detalles de LPS y dependencias |
-| `GET` | `/api/info` | Endpoint base placeholder para futuras funcionalidades de ingesta y orden |
+- `make dev`: Levanta PostgreSQL `17.11`, migraciones (`goose`), API Go (`apps/api`) y Frontend React (`apps/web`).
+- `make prod`: Levanta la variante de producción con imágenes `distroless/static-debian13:nonroot` fijadas por digest SHA-256.
+- `make codegen`: Regenera `contracts/openapi.yaml` desde los structs de Huma y los tipos TypeScript con `openapi-typescript`.
+- `make sqlc`: Ejecuta `sqlc@v1.29.0` sobre `apps/api/db/queries`.
+- `make test`: Ejecuta pruebas y cobertura en `apps/api` y `apps/web`.

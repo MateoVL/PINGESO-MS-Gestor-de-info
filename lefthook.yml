@@ -1,0 +1,23 @@
+pre-commit:
+  parallel: true
+  commands:
+    lint-web:
+      glob: "apps/web/**/*.{ts,tsx}"
+      run: pnpm lint
+    format-check:
+      glob: "apps/web/**/*.{ts,tsx,css}"
+      run: pnpm format:check
+    go-vet:
+      root: "apps/api/"
+      glob: "*.go"
+      run: go vet ./...
+
+pre-push:
+  parallel: true
+  commands:
+    test-api:
+      root: "apps/api/"
+      run: go test ./...
+    test-web:
+      run: pnpm test
+
