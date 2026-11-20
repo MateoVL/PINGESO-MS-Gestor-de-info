@@ -48,9 +48,13 @@ Desde la raíz, con Docker y Docker Compose v2 en ejecución:
 docker compose up --build
 ```
 
-- Panel web (React 19): `http://localhost:3000`
-- Diagnóstico de salud: `http://localhost:8080/api/health`
-- Documentación interactiva OpenAPI 3.1 (`API_ENV=dev`): `http://localhost:8080/api/docs`
+- **Panel web** (React 19, `spa-server` en contenedor `:8080`): [http://127.0.0.1:5120](http://127.0.0.1:5120)
+- **Healthcheck Web**: [http://127.0.0.1:5120/healthz](http://127.0.0.1:5120/healthz)
+- **Healthcheck API (vivo)**: [http://127.0.0.1:5121/healthz](http://127.0.0.1:5121/healthz)
+- **Readiness API (PostgreSQL)**: [http://127.0.0.1:5121/readyz](http://127.0.0.1:5121/readyz)
+- **Diagnóstico de salud**: [http://127.0.0.1:5121/api/health](http://127.0.0.1:5121/api/health)
+- **Documentación interactiva OpenAPI 3.1 (`API_ENV=dev`)**: [http://127.0.0.1:5121/api/docs](http://127.0.0.1:5121/api/docs)
+- **Mailpit UI (perfil `dev`, `docker compose --profile dev up`)**: [http://127.0.0.1:8025](http://127.0.0.1:8025)
 
 ## Comandos principales (`Makefile`)
 

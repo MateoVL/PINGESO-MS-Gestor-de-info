@@ -5,7 +5,7 @@ Este documento describe los modos de falla previstos para el microservicio **Ges
 ## 1. Indisponibilidad o caída de PostgreSQL
 
 - **Síntoma**: Timeouts al consultar o insertar lotes/registros; el ping de diagnóstico supera los 2 segundos.
-- **Detección**: `GET /health` y `GET /api/health` responden `HTTP 503 Service Unavailable` con `status: "degraded"` y `database.connected: false` sin exponer trazas ni credenciales internas.
+- **Detección**: `GET /readyz`, `GET /health` y `GET /api/health` responden `HTTP 503 Service Unavailable` con `status: "degraded"` y `database.connected: false` sin exponer trazas ni credenciales internas, mientras que `GET /healthz` mantiene `HTTP 200 OK` indicando que el proceso sigue vivo.
 - **Mitigación**:
   - Pool de conexiones `pgxpool` con reconexión automática.
   - Si un lote falla durante su persistencia, la operación aborta de forma atómica y el emisor (`PT5 Extractor OCR`) puede reintentar de manera segura utilizando la misma cabecera `Idempotency-Key`.

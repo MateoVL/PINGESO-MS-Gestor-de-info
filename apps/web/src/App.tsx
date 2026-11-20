@@ -1,7 +1,7 @@
 import { PipelineFeature } from './features/pipeline/PipelineFeature'
 
 export function App() {
-  const rawBaseUrl = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_BASE_URL ?? 'http://localhost:8080'
+  const rawBaseUrl = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_BASE_URL ?? ''
   const apiBaseUrl = rawBaseUrl.replace(/\/$/, '')
 
   return (

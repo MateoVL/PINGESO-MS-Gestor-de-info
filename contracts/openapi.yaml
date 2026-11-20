@@ -7,6 +7,38 @@ info:
     registros en PostgreSQL para el Motor de Reportes (PT1).
   version: 1.0.0
 paths:
+  /healthz:
+    get:
+      operationId: get-healthz
+      summary: Liveness probe del contenedor API (vivo)
+      tags:
+        - Diagnóstico
+      responses:
+        "200":
+          description: Proceso HTTP vivo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LivenessStatus"
+  /readyz:
+    get:
+      operationId: get-readyz
+      summary: Readiness probe del contenedor API con verificación de PostgreSQL
+      tags:
+        - Diagnóstico
+      responses:
+        "200":
+          description: Servicio y base de datos operativos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        "503":
+          description: Servicio degradado (PostgreSQL no disponible)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
   /api/health:
     get:
       operationId: get-health
@@ -252,6 +284,15 @@ paths:
                 $ref: "#/components/schemas/SolicitudLote"
 components:
   schemas:
+    LivenessStatus:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          description: Estado del proceso HTTP
+          example: ok
     DatabaseStatus:
       type: object
       required:

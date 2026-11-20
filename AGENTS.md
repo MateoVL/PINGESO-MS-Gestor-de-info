@@ -144,4 +144,65 @@ Cada servicio entrega su frontend como microcomponentes: componentes React autoc
 - Se publica como paquete npm versionado (`@<org>/<servicio>-ui`) y cada versión declara qué versión del contrato API consume.
 - El repo incluye una app de desarrollo local que monta los microcomponentes con mocks MSW. Esa app no se publica.
 
+## 4. Contenedorización
 
+Cada servicio publica dos imágenes, `api` y `migrate`, y su paquete de microcomponentes. Las imágenes se construyen con build multi-stage, imágenes base fijadas por digest y runtime sin shell ni compilador. Todos los servicios usan los mismos Dockerfiles y solo cambia el nombre del binario.
+
+### Reglas obligatorias (las verifican Hadolint, Dockle y Trivy)
+
+| Regla | Cómo se cumple |
+| --- | --- |
+| Base fijada por versión y digest | `golang:1.26.5-alpine3.23@sha256:…`, nunca `latest` |
+| Runtime mínimo | `gcr.io/distroless/static-debian13:nonroot` para api y web |
+| Usuario no root | `USER nonroot:nonroot`, archivos con `--chown` |
+| Binario reproducible | `CGO_ENABLED=0`, `-trimpath`, `-buildvcs=false`, `-ldflags="-s -w -X main.version=$VERSION"` |
+| Caché de dependencias | `RUN --mount=type=cache` para módulos Go y store de pnpm |
+| Multi-arquitectura | `--platform=$BUILDPLATFORM` + `TARGETOS`/`TARGETARCH` |
+| Sin secretos en la imagen | `.dockerignore` excluye `.env*`, `.git`, `node_modules`. Ningún secreto en `ARG` ni en `VITE_*` |
+| Un puerto | Todo escucha en `8080` dentro del contenedor |
+| Healthcheck | API: `GET /healthz` (vivo) y `GET /readyz` (con PostgreSQL). Web: `GET /healthz` |
+
+### API (`apps/api/Dockerfile`)
+
+```dockerfile
+# syntax=docker/dockerfile:1.7
+FROM --platform=$BUILDPLATFORM golang:1.26.5-alpine3.23@sha256:622e56dbc11a8cfe87cafa2331e9a201877271cbff918af53d3be315f3da88cc AS build
+WORKDIR /src
+COPY apps/api/go.mod apps/api/go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
+COPY apps/api/ ./
+ARG TARGETOS TARGETARCH VERSION=dev
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
+    go build -buildvcs=false -trimpath \
+    -ldflags="-s -w -X main.version=$VERSION" \
+    -o /out/servicio ./cmd/api
+
+FROM gcr.io/distroless/static-debian13:nonroot@sha256:f7f8f729987ad0fdf6b05eeeae94b26e6a0f613bdf46feea7fc40f7bd72953e6
+WORKDIR /app
+COPY --from=build --chown=nonroot:nonroot /out/servicio /app/servicio
+USER nonroot:nonroot
+EXPOSE 8080
+ENTRYPOINT ["/app/servicio"]
+```
+
+### Migraciones (`apps/api/Dockerfile.migrate`)
+
+Goose v3.24.1 se instala con `go install github.com/pressly/goose/v3/cmd/goose@v3.24.1` para que use su propio `go.mod`. La imagen final es `alpine:3.23.7` (digest fijado en el Hito 0) con `goose`, `river-migrate` (si el servicio usa River) y `db/migrations/`. No contiene Go ni necesita internet. Comando: `goose -dir /app/db/migrations postgres "$DATABASE_URL" up`.
+
+### Web (`apps/web/Dockerfile`)
+
+Sirve la app de desarrollo local de cada repo y es la plantilla para la app que componga los microcomponentes. Tres etapas: build de Vite con `pnpm install --frozen-lockfile --ignore-scripts`, compilación del `spa-server` en Go y runtime distroless. El `spa-server` sirve `/srv`, responde `/healthz`, aplica `X-Content-Type-Options: nosniff` y `Referrer-Policy`, cachea `/assets/` como inmutable y reenvía `/api` al backend vía `BACKEND_URL`. Así el navegador ve un solo origen y la cookie de sesión funciona sin CORS.
+
+### Compose de desarrollo
+
+`docker-compose.yaml` en la raíz con `name:` fijo y estos servicios:
+
+1. `postgres` con healthcheck `pg_isready`
+2. `migrate`, que espera `service_healthy` de postgres y termina
+3. `backend`, que espera `service_completed_successfully` de migrate, con puerto publicado solo en `127.0.0.1`
+4. `frontend`, con `BACKEND_URL=http://backend:8080`
+5. Perfil `dev`: `seed` (datos de demo) y `mailpit` (SMTP falso en `:8025`). Fuera de desarrollo no se define `COMPOSE_PROFILES`
+
+Cada servicio recibe un número N en el documento de componentes de su sección y usa un rango de puertos locales propio, para que un desarrollador pueda levantar varios a la vez: `51N0` (web) y `51N1` (api). Ejemplo: el servicio 2 usa 5120 y 5121.

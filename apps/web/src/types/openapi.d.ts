@@ -1,5 +1,9 @@
 // Generated from contracts/openapi.yaml (OpenAPI 3.1.0)
 
+export interface LivenessStatus {
+  status: 'ok'
+}
+
 export interface DatabaseStatus {
   connected: boolean
   engine: string
@@ -53,6 +57,21 @@ export interface LoteDetalle {
 }
 
 export interface paths {
+  '/healthz': {
+    get: {
+      responses: {
+        200: { content: { 'application/json': LivenessStatus } }
+      }
+    }
+  }
+  '/readyz': {
+    get: {
+      responses: {
+        200: { content: { 'application/json': HealthResponse } }
+        503: { content: { 'application/json': HealthResponse } }
+      }
+    }
+  }
   '/api/health': {
     get: {
       responses: {

@@ -76,6 +76,15 @@ type HealthOutput struct {
 	Body   service.HealthResponse `json:"body"`
 }
 
+type LivenessStatus struct {
+	Status string `json:"status" doc:"Estado del proceso HTTP" example:"ok"`
+}
+
+type LivenessOutput struct {
+	Status int            `header:"-"`
+	Body   LivenessStatus `json:"body"`
+}
+
 type CreateBatchInput struct {
 	IdempotencyKey string              `header:"Idempotency-Key" doc:"Clave de idempotencia para evitar duplicados en reintentos" maxLength:"128" example:"lote-2026-001"`
 	Body           store.SolicitudLote `json:"body"`
@@ -146,6 +155,37 @@ func NewHumaAPI(mux *http.ServeMux, opts Options, deps Dependencies) huma.API {
 	}
 
 	api := humago.New(mux, cfg)
+
+	huma.Register(api, huma.Operation{
+		OperationID: "get-healthz",
+		Method:      http.MethodGet,
+		Path:        "/healthz",
+		Summary:     "Liveness probe del contenedor API (vivo)",
+		Tags:        []string{"Diagnóstico"},
+	}, func(_ context.Context, _ *struct{}) (*LivenessOutput, error) {
+		return &LivenessOutput{
+			Status: http.StatusOK,
+			Body:   LivenessStatus{Status: "ok"},
+		}, nil
+	})
+
+	huma.Register(api, huma.Operation{
+		OperationID: "get-readyz",
+		Method:      http.MethodGet,
+		Path:        "/readyz",
+		Summary:     "Readiness probe del contenedor API con verificación de PostgreSQL",
+		Tags:        []string{"Diagnóstico"},
+	}, func(ctx context.Context, _ *struct{}) (*HealthOutput, error) {
+		if deps.Health == nil {
+			return &HealthOutput{Status: http.StatusOK}, nil
+		}
+		res := deps.Health.service.Check(ctx)
+		status := http.StatusOK
+		if res.Status != service.HealthStatusHealthy {
+			status = http.StatusServiceUnavailable
+		}
+		return &HealthOutput{Status: status, Body: res}, nil
+	})
 
 	huma.Register(api, huma.Operation{
 		OperationID: "get-health",
@@ -339,8 +379,18 @@ func NewRouter(opts Options, deps Dependencies) http.Handler {
 			panic("falla inesperada")
 		}
 
-		// Health checks
-		if path == "/health" || path == "/api/health" {
+		// Liveness check (vivo, sin PostgreSQL)
+		if path == "/healthz" {
+			if r.Method != http.MethodGet {
+				RespondError(w, r, ErrMethodNotAllowed)
+				return
+			}
+			writeJSON(w, http.StatusOK, LivenessStatus{Status: "ok"})
+			return
+		}
+
+		// Readiness & Health checks (con PostgreSQL)
+		if path == "/readyz" || path == "/health" || path == "/api/health" {
 			if r.Method != http.MethodGet {
 				RespondError(w, r, ErrMethodNotAllowed)
 				return
@@ -427,7 +477,7 @@ func NewRouter(opts Options, deps Dependencies) http.Handler {
 	var handler http.Handler = mainHandler
 	handler = CORSMiddleware(opts.AllowedOrigins)(handler)
 	handler = RecoveryMiddleware(logger)(handler)
-	handler = LoggerMiddleware(logger, "/health", "/api/health")(handler)
+	handler = LoggerMiddleware(logger, "/health", "/api/health", "/healthz", "/readyz")(handler)
 	handler = RequestIDMiddleware(handler)
 	return handler
 }
