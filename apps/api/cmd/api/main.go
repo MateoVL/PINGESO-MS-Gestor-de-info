@@ -59,7 +59,7 @@ func run() error {
 		api.Options{
 			AllowedOrigins: cfg.AllowedOrigins,
 			Logger:         logger,
-			PublishDocs:    cfg.APIEnv == "dev" || cfg.AppEnv != "production",
+			PublishDocs:    cfg.APIEnv == "dev",
 		},
 		api.Dependencies{
 			Health:  api.NewHealthHandler(healthService),
