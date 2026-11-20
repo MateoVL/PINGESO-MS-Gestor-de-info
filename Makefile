@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 ENV_FILE ?= .env
 
-.PHONY: help env dev dev-d prod down down-prod logs logs-prod local-db local-back local-front clean test
+.PHONY: help env dev dev-d prod down down-prod logs logs-prod local-db local-back local-front sqlc generate migrate-up migrate-down oapi-codegen codegen clean test
 
 # ==============================================================================
 # Ayuda y Documentación
@@ -25,25 +25,49 @@ env: ## Crea el archivo .env a partir de .env.example si no existe
 	fi
 
 # ==============================================================================
-# Modo 1: Local con Docker Compose (Desarrollo con Hot Reload)
+# Generación de código y Migraciones (versiones exactas fijadas según AGENTS.md)
+# ==============================================================================
+sqlc: ## Genera el código de consultas SQL con sqlc v1.29.0
+	cd apps/api && go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.29.0 generate
+
+generate: sqlc ## Regenera internal/repository/ con sqlc v1.29.0 (AGENTS.md sección 5)
+
+migrate-up: env ## Ejecuta las migraciones de PostgreSQL con goose v3.24.1
+	cd apps/api && go run github.com/pressly/goose/v3/cmd/goose@v3.24.1 -dir db/migrations postgres "$${POSTGRES_URI:-postgres://127.0.0.1:5432/gestor_info_db?sslmode=disable}" up
+
+migrate-down: env ## Revierte la última migración con goose v3.24.1
+	cd apps/api && go run github.com/pressly/goose/v3/cmd/goose@v3.24.1 -dir db/migrations postgres "$${POSTGRES_URI:-postgres://127.0.0.1:5432/gestor_info_db?sslmode=disable}" down
+
+oapi-codegen: ## Genera clientes Go de servicios externos desde contracts/externos/*.yaml con oapi-codegen v2.8.2
+	@for spec in contracts/externos/*.yaml; do \
+		[ -e "$$spec" ] || continue; \
+		name=$$(basename "$$spec" .yaml); \
+		cd apps/api && go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.2 -package "$$name" -generate types,client "../../$$spec" > "internal/service/$${name}_client.gen.go"; \
+	done
+
+codegen: ## Genera contracts/openapi.yaml (OpenAPI 3.1) y tipos TypeScript con pnpm codegen
+	pnpm codegen
+
+# ==============================================================================
+# Modo 1: Local con Docker Compose (Desarrollo)
 # ==============================================================================
 dev: env ## Ejecuta el entorno de desarrollo local con Docker Compose
 	@echo "--> Levantando entorno de desarrollo con Docker Compose..."
-	docker compose --env-file $(ENV_FILE) -f docker-compose.yml up --build
+	docker compose --env-file $(ENV_FILE) -f docker-compose.yaml up --build
 
 dev-d: env ## Ejecuta el entorno de desarrollo en segundo plano (detached)
 	@echo "--> Levantando entorno de desarrollo en segundo plano..."
-	docker compose --env-file $(ENV_FILE) -f docker-compose.yml up -d --build
+	docker compose --env-file $(ENV_FILE) -f docker-compose.yaml up -d --build
 
 down: ## Detiene los contenedores del entorno de desarrollo local
 	@echo "--> Deteniendo contenedores de desarrollo..."
-	docker compose -f docker-compose.yml down
+	docker compose -f docker-compose.yaml down
 
 logs: ## Sigue los logs en tiempo real del entorno de desarrollo
-	docker compose -f docker-compose.yml logs -f
+	docker compose -f docker-compose.yaml logs -f
 
 # ==============================================================================
-# Modo 2: Producción con Docker Compose (Multi-stage + Nginx)
+# Modo 2: Producción con Docker Compose (Multi-stage + Distroless)
 # ==============================================================================
 check-prod-env:
 	@if [ ! -f $(ENV_FILE) ]; then \
@@ -67,21 +91,22 @@ logs-prod: ## Sigue los logs en tiempo real de producción
 # Modo 3: Ejecución Local Nativa (Host)
 # ==============================================================================
 local-db: env ## Levanta únicamente PostgreSQL en Docker para desarrollo nativo
-	docker compose --env-file $(ENV_FILE) -f docker-compose.yml up -d --wait postgres
+	docker compose --env-file $(ENV_FILE) -f docker-compose.yaml up -d --wait postgres
 
 local-back: env ## Ejecuta el backend Go localmente en el host
-	cd backend && go run ./cmd/api
+	cd apps/api && go run ./cmd/api
 
-local-front: env ## Ejecuta el frontend Vue localmente en el host
-	cd frontend && npm ci && npm run dev
+local-front: env ## Ejecuta el frontend React localmente en el host con pnpm
+	pnpm install --frozen-lockfile && pnpm dev
 
 # ==============================================================================
 # Mantenimiento y Pruebas
 # ==============================================================================
-test: ## Ejecuta pruebas de Go y Vue y genera sus reportes de cobertura
-	cd backend && go test -coverpkg=./... -coverprofile=coverage.out ./...
-	cd frontend && npm ci && npm run test:coverage
+test: ## Ejecuta pruebas de Go y React y genera sus reportes de cobertura
+	cd apps/api && go test -coverpkg=./... -coverprofile=coverage.out ./...
+	pnpm install --frozen-lockfile && pnpm test:coverage
 
-clean: ## Limpia contenedores, redes y volúmenes temporales de Docker
-	@echo "--> Limpiando contenedores huérfanos y volúmenes de desarrollo..."
-	docker compose -f docker-compose.yml down -v --remove-orphans
+clean: ## Limpia contenedores, redes, volúmenes e imágenes locales del proyecto
+	@echo "--> Limpiando contenedores, redes, volúmenes e imágenes locales..."
+	docker compose --profile dev -f docker-compose.yaml down -v --rmi local --remove-orphans
+	docker compose --env-file .env.example -f docker-compose.prod.yml down -v --rmi local --remove-orphans
