@@ -1,0 +1,16 @@
+# Etapa 1: Compilar goose v3.24.1 exacto
+FROM golang:1.26.5-alpine3.23@sha256:622e56dbc11a8cfe87cafa2331e9a201877271cbff918af53d3be315f3da88cc AS builder
+
+RUN CGO_ENABLED=0 go install github.com/pressly/goose/v3/cmd/goose@v3.24.1
+
+# Etapa 2: Runtime alpine 3.23.7 según sección 3 de AGENTS.md
+FROM alpine:3.23.7
+
+WORKDIR /migrations
+
+COPY --from=builder /go/bin/goose /usr/local/bin/goose
+COPY db/migrations/ /migrations/
+
+ENTRYPOINT ["goose", "-dir", "/migrations", "postgres"]
+CMD ["up"]
+

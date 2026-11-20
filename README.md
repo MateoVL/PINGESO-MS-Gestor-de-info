@@ -1,8 +1,44 @@
 # Pipeline de Información · Grupo 2 · PINGESO
 
-Base del microservicio **PT2** para el Hito 0 de Entorno y Seguridad. Su objetivo en la Línea de Productos de Software es recibir datos masivos del **PT5, Extractor de Datos OCR**, limpiarlos, validarlos y almacenarlos en PostgreSQL para que el **PT1, Motor de Reportes**, pueda consumirlos.
+Base del microservicio **PT2 (Gestor de Información)** alineada con las reglas de arquitectura, contrato API-first y versiones exactas de `AGENTS.md`. Su objetivo en la Línea de Productos de Software es recibir datos masivos del **PT5, Extractor de Datos OCR**, limpiarlos, validarlos y almacenarlos en PostgreSQL para que el **PT1, Motor de Reportes**, pueda consumirlos.
 
-En el Hito 0 se entrega el entorno de Go, Vue y PostgreSQL, junto con el pipeline de calidad y seguridad. Para el Hito 1 quedan la publicación del contrato OpenAPI 3.1.0 y los endpoints con datos de prueba CSV o JSON. La lógica real de ETL y su persistencia corresponden al Hito 2.
+## Stack y estructura del repositorio (`AGENTS.md`)
+
+| Componente | Tecnología y Versión Exacta | Ubicación |
+|---|---|---|
+| **Backend** | Go `1.26.5` (`go 1.26.0` + `toolchain go1.26.5`), Huma `v2.34.1`, pgx `v5.10.0`, sqlc `v1.29.0`, goose `v3.24.1` | `apps/api/` |
+| **Frontend** | Node `22.22.0`, pnpm `10.13.1`, React `19.2.8`, TypeScript `6.0.3`, Vite `8.1.5`, Tailwind `4.3.3` | `apps/web/` |
+| **Base de datos** | PostgreSQL `17.11` | `docker-compose.yaml` |
+| **Contrato API-first** | OpenAPI 3.1.0 generado desde structs de Huma y commiteado | `contracts/openapi.yaml` |
+| **Modos de falla** | Documentación de resiliencia, idempotencia y timeouts | `docs/modos-de-falla.md` |
+
+### Estructura de carpetas
+
+```text
+.
+├── apps/
+│   ├── api/
+│   │   ├── cmd/api/            # main: arranque, config, señales
+│   │   ├── cmd/openapi/        # exportador del contrato OpenAPI 3.1 desde Huma
+│   │   ├── internal/api/       # handlers Huma + structs del contrato + middlewares
+│   │   ├── internal/service/   # reglas de negocio, sin HTTP ni SQL + cliente HTTP 5s
+│   │   ├── internal/store/     # acceso a datos (PostgreSQL / memoria API-first)
+│   │   ├── internal/repository/# generado por sqlc, no editar
+│   │   ├── db/migrations/      # migraciones goose
+│   │   ├── db/queries/         # consultas SQL para sqlc
+│   │   ├── e2e/                # pruebas e2e + testdata/*.golden.md
+│   │   ├── Dockerfile          # golang:1.26.5-alpine3.23 -> distroless static-debian13:nonroot
+│   │   └── Dockerfile.migrate  # goose v3.24.1 sobre alpine:3.23.7
+│   └── web/
+│       ├── src/componentes/    # microcomponentes React (<nombre>.tsx, <nombre>.api.ts, use-<nombre>.ts)
+│       └── src/features/       # composición de vistas de desarrollo local
+├── contracts/openapi.yaml      # contrato OpenAPI 3.1 generado y commiteado
+├── docs/modos-de-falla.md
+├── docker-compose.yaml
+├── .env.example
+├── lefthook.yml
+└── .github/workflows/ci.yml
+```
 
 ## Levantar el entorno
 
@@ -12,88 +48,14 @@ Desde la raíz, con Docker y Docker Compose v2 en ejecución:
 docker compose up --build
 ```
 
-Abre el [panel del Grupo 2](http://localhost:3000). El panel consulta la [API de diagnóstico](http://localhost:8080/api/health), que hace un ping a PostgreSQL y muestra el resultado. Para detener los servicios, ejecuta `docker compose down`.
+- Panel web (React 19): `http://localhost:3000`
+- Diagnóstico de salud: `http://localhost:8080/api/health`
+- Documentación interactiva OpenAPI 3.1 (`API_ENV=dev`): `http://localhost:8080/api/docs`
 
-| Componente | Tecnología | Ubicación |
-|---|---|---|
-| Backend | Go y Gin | `backend/` |
-| Frontend | Vue 3 con Composition API y Vite | `frontend/` |
-| Base de datos | PostgreSQL 17 | Inicializada automáticamente con `POSTGRES_DB`, `POSTGRES_USER` y `POSTGRES_PASSWORD` |
+## Comandos principales (`Makefile`)
 
-El entorno de desarrollo tiene valores locales por defecto. Para personalizarlos, copia `.env.example` a `.env` (`Copy-Item .env.example .env` en PowerShell) y edita el archivo. PostgreSQL guarda sus datos en un volumen propio y crea la base de datos `POSTGRES_DB` y el usuario de aplicación `POSTGRES_USER` cuando se inicializa un volumen nuevo. Si cambias credenciales en un volumen existente, actualiza el usuario en PostgreSQL o recrea el volumen antes de reiniciar la aplicación.
-
-Para ejecutar Go y Vue en el equipo, copia primero `.env.example` a `.env`. Levanta PostgreSQL con `make local-db` y abre dos terminales para ejecutar `make local-back` y `make local-front`. Se requiere Go 1.26 o superior y Node.js 24 actualizado. Si cambias el puerto de PostgreSQL, ajusta también `POSTGRES_URI` para el backend nativo.
-
-La variante de producción se construye con `docker compose -f docker-compose.prod.yml up -d --build`. Usa credenciales propias en `.env`. PostgreSQL queda en la red interna y Nginx reenvía `/api/` al backend desde el mismo origen del frontend.
-
-### Probar el pipeline con datos simulados
-
-Desde `frontend/`, ejecuta `npm ci` y `npm run dev`. En el panel, pulsa **Procesar lote** para ver los registros normalizados y el motivo de cada rechazo. Puedes editar el JSON o recuperar los datos con **Restaurar ejemplo**.
-
-El lote de ejemplo simula una respuesta OCR con folios, nombres y correos. La prueba se ejecuta en el navegador y sus resultados son temporales.
-
-## Estructura del backend
-
-Cada petición recorre `routes → controllers → services`.
-
-| Carpeta | Responsabilidad |
-|---|---|
-| `cmd/api` | Carga la configuración, crea las dependencias y levanta el servidor |
-| `internal/config` | Lee y valida las variables de entorno |
-| `internal/database` | Pool de conexiones de PostgreSQL |
-| `internal/models` | Estructuras de entrada y salida de la API |
-| `internal/services` | Lógica de negocio, sin depender de HTTP |
-| `internal/controllers` | Leen la petición, llaman al servicio y responden JSON |
-| `internal/routes` | Arman el router con sus middlewares y registran las rutas de cada recurso |
-| `internal/middleware` | Request ID, logs, recuperación de errores inesperados y CORS |
-| `internal/utils` | Errores de la API y helpers compartidos |
-
-Todos los errores usan el mismo formato, y `request_id` coincide con el encabezado `X-Request-ID` y con los logs:
-
-```json
-{"error": {"code": "not_found", "message": "El recurso solicitado no existe", "request_id": "..."}}
-```
-
-Los controladores responden errores solo con `utils.RespondError`. Un error que no está definido en `internal/utils/errors.go` llega al cliente como un 500 genérico, y su causa real queda en los logs.
-
-La identidad que muestra `/api/health` se configura con `SERVICE_ROLE`, `SERVICE_DEPENDS_ON`, `SERVICE_CONSUMERS` y `SERVICE_CAPABILITIES`.
-
-## Rutas de diagnóstico
-
-| Ruta | Resultado |
-|---|---|
-| `GET /health` y `GET /api/health` | HTTP 200 si PostgreSQL responde o 503 con estado `degraded` si está indisponible |
-| `GET /api/info` | Identificación del PT2 y rutas previstas para una fase posterior |
-
-## Calidad y seguridad del Hito 0
-
-El workflow `hito-0.yml` se ejecuta en pull requests hacia `main`, pushes a `main` y ejecuciones manuales. En GitHub, los resultados de Trivy y la comprobación de integración se ven en la pestaña **Actions**.
-
-- **Pruebas y cobertura.** Go genera `backend/coverage.out` y Vue genera `frontend/coverage/lcov.info`. El workflow también compila Vue y verifica que el frontend pueda consultar el backend y PostgreSQL por la ruta de Nginx.
-- **Trivy.** Escanea dependencias del repositorio e imágenes de backend y frontend. En el Hito 0 publica los hallazgos en el log para establecer una línea base. Los umbrales de aprobación corresponden al Hito 2.
-- **SonarQube.** Analiza Go y Vue en `main` e importa ambos informes de cobertura. El archivo `sonar-project.properties` concentra su configuración.
-
-### Conectar SonarQube en GitHub
-
-1. En una instancia de SonarQube Server accesible desde el runner de GitHub, crea el proyecto con clave `pingeso-grupo-2-pipeline-info` y genera un token de análisis.
-2. En **Settings → Secrets and variables → Actions**, crea la variable de repositorio `SONAR_HOST_URL` con la URL del servidor y el secreto `SONAR_TOKEN` con el token.
-3. Ejecuta **Hito 0 · Calidad y seguridad** desde **Actions** en la rama `main` y revisa el resultado del análisis y la cobertura en SonarQube.
-
-Con Docker, puedes levantar una instancia local de SonarQube Community Build para la demostración:
-
-```bash
-docker run -d --name sonar-pingeso -p 127.0.0.1:9000:9000 sonarqube:community
-```
-
-Crea el proyecto en el [panel local de SonarQube](http://localhost:9000). Genera los reportes con `make test` y ejecuta `sonar-scanner` desde la raíz con `SONAR_HOST_URL` y `SONAR_TOKEN` definidos en el entorno de tu terminal. Usa un escáner con aprovisionamiento automático de Java o configura `JAVA_HOME` con JDK 21 o superior. El runner alojado por GitHub necesita una URL de SonarQube a la que pueda conectarse.
-
-### Pruebas sin Makefile
-
-```text
-cd backend
-go test -coverprofile=coverage.out ./...
-cd ../frontend
-npm ci
-npm run test:coverage
-npm run build
-```
+- `make dev`: Levanta PostgreSQL `17.11`, migraciones (`goose`), API Go (`apps/api`) y Frontend React (`apps/web`).
+- `make prod`: Levanta la variante de producción con imágenes `distroless/static-debian13:nonroot` fijadas por digest SHA-256.
+- `make codegen`: Regenera `contracts/openapi.yaml` desde los structs de Huma y los tipos TypeScript con `openapi-typescript`.
+- `make sqlc`: Ejecuta `sqlc@v1.29.0` sobre `apps/api/db/queries`.
+- `make test`: Ejecuta pruebas y cobertura en `apps/api` y `apps/web`.
