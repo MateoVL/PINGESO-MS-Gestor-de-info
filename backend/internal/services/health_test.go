@@ -23,8 +23,8 @@ func TestHealthCheck(t *testing.T) {
 		status    string
 		connected bool
 	}{
-		{"MongoDB disponible", nil, models.HealthStatusHealthy, true},
-		{"MongoDB caído", errors.New("detalle interno de MongoDB"), models.HealthStatusDegraded, false},
+		{"PostgreSQL disponible", nil, models.HealthStatusHealthy, true},
+		{"PostgreSQL caído", errors.New("detalle interno de PostgreSQL"), models.HealthStatusDegraded, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := NewHealthService(info, func(ctx context.Context) error {
@@ -48,7 +48,7 @@ func TestHealthCheck(t *testing.T) {
 				t.Errorf("la identidad del servicio debe venir de la configuración: %+v", got)
 			}
 			if strings.Contains(got.Database.Message, "detalle interno") {
-				t.Error("el diagnóstico no debe exponer el error de MongoDB")
+				t.Error("el diagnóstico no debe exponer el error de PostgreSQL")
 			}
 		})
 	}

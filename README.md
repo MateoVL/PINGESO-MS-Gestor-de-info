@@ -1,8 +1,8 @@
 # Pipeline de Información · Grupo 2 · PINGESO
 
-Base del microservicio **PT2** para el Hito 0 de Entorno y Seguridad. Su objetivo en la Línea de Productos de Software es recibir datos masivos del **PT5, Extractor de Datos OCR**, limpiarlos, validarlos y almacenarlos en MongoDB para que el **PT1, Motor de Reportes**, pueda consumirlos.
+Base del microservicio **PT2** para el Hito 0 de Entorno y Seguridad. Su objetivo en la Línea de Productos de Software es recibir datos masivos del **PT5, Extractor de Datos OCR**, limpiarlos, validarlos y almacenarlos en PostgreSQL para que el **PT1, Motor de Reportes**, pueda consumirlos.
 
-En el Hito 0 se entrega el entorno de Go, Vue y MongoDB, junto con el pipeline de calidad y seguridad. Para el Hito 1 quedan la publicación del contrato OpenAPI 3.1.0 y los endpoints con datos de prueba CSV o JSON. La lógica real de ETL y su persistencia corresponden al Hito 2.
+En el Hito 0 se entrega el entorno de Go, Vue y PostgreSQL, junto con el pipeline de calidad y seguridad. Para el Hito 1 quedan la publicación del contrato OpenAPI 3.1.0 y los endpoints con datos de prueba CSV o JSON. La lógica real de ETL y su persistencia corresponden al Hito 2.
 
 ## Levantar el entorno
 
@@ -12,19 +12,19 @@ Desde la raíz, con Docker y Docker Compose v2 en ejecución:
 docker compose up --build
 ```
 
-Abre el [panel del Grupo 2](http://localhost:3000). El panel consulta la [API de diagnóstico](http://localhost:8080/api/health), que hace un ping a MongoDB y muestra el resultado. Para detener los servicios, ejecuta `docker compose down`.
+Abre el [panel del Grupo 2](http://localhost:3000). El panel consulta la [API de diagnóstico](http://localhost:8080/api/health), que hace un ping a PostgreSQL y muestra el resultado. Para detener los servicios, ejecuta `docker compose down`.
 
 | Componente | Tecnología | Ubicación |
 |---|---|---|
 | Backend | Go y Gin | `backend/` |
 | Frontend | Vue 3 con Composition API y Vite | `frontend/` |
-| Base de datos | MongoDB 8.0 | `scripts/init-mongo.js` crea el usuario de aplicación |
+| Base de datos | PostgreSQL 17 | Inicializada automáticamente con `POSTGRES_DB`, `POSTGRES_USER` y `POSTGRES_PASSWORD` |
 
-El entorno de desarrollo tiene valores locales por defecto. Para personalizarlos, copia `.env.example` a `.env` (`Copy-Item .env.example .env` en PowerShell) y edita el archivo. MongoDB guarda sus datos en un volumen propio. El usuario de aplicación tiene rol `readWrite` solo sobre `MONGO_DATABASE`, y el script de creación se ejecuta cuando se inicializa un volumen nuevo. Si cambias credenciales en un volumen existente, actualiza el usuario en MongoDB antes de reiniciar la aplicación.
+El entorno de desarrollo tiene valores locales por defecto. Para personalizarlos, copia `.env.example` a `.env` (`Copy-Item .env.example .env` en PowerShell) y edita el archivo. PostgreSQL guarda sus datos en un volumen propio y crea la base de datos `POSTGRES_DB` y el usuario de aplicación `POSTGRES_USER` cuando se inicializa un volumen nuevo. Si cambias credenciales en un volumen existente, actualiza el usuario en PostgreSQL o recrea el volumen antes de reiniciar la aplicación.
 
-Para ejecutar Go y Vue en el equipo, copia primero `.env.example` a `.env`. Levanta MongoDB con `make local-db` y abre dos terminales para ejecutar `make local-back` y `make local-front`. Se requiere Go 1.26 o superior y Node.js 24 actualizado. Si cambias el puerto de MongoDB, ajusta también `MONGO_URI` para el backend nativo.
+Para ejecutar Go y Vue en el equipo, copia primero `.env.example` a `.env`. Levanta PostgreSQL con `make local-db` y abre dos terminales para ejecutar `make local-back` y `make local-front`. Se requiere Go 1.26 o superior y Node.js 24 actualizado. Si cambias el puerto de PostgreSQL, ajusta también `POSTGRES_URI` para el backend nativo.
 
-La variante de producción se construye con `docker compose -f docker-compose.prod.yml up -d --build`. Usa credenciales propias en `.env`. MongoDB queda en la red interna y Nginx reenvía `/api/` al backend desde el mismo origen del frontend.
+La variante de producción se construye con `docker compose -f docker-compose.prod.yml up -d --build`. Usa credenciales propias en `.env`. PostgreSQL queda en la red interna y Nginx reenvía `/api/` al backend desde el mismo origen del frontend.
 
 ### Probar el pipeline con datos simulados
 
@@ -40,7 +40,7 @@ Cada petición recorre `routes → controllers → services`.
 |---|---|
 | `cmd/api` | Carga la configuración, crea las dependencias y levanta el servidor |
 | `internal/config` | Lee y valida las variables de entorno |
-| `internal/database` | Cliente de MongoDB |
+| `internal/database` | Pool de conexiones de PostgreSQL |
 | `internal/models` | Estructuras de entrada y salida de la API |
 | `internal/services` | Lógica de negocio, sin depender de HTTP |
 | `internal/controllers` | Leen la petición, llaman al servicio y responden JSON |
@@ -62,14 +62,14 @@ La identidad que muestra `/api/health` se configura con `SERVICE_ROLE`, `SERVICE
 
 | Ruta | Resultado |
 |---|---|
-| `GET /health` y `GET /api/health` | HTTP 200 si MongoDB responde o 503 con estado `degraded` si está indisponible |
+| `GET /health` y `GET /api/health` | HTTP 200 si PostgreSQL responde o 503 con estado `degraded` si está indisponible |
 | `GET /api/info` | Identificación del PT2 y rutas previstas para una fase posterior |
 
 ## Calidad y seguridad del Hito 0
 
 El workflow `hito-0.yml` se ejecuta en pull requests hacia `main`, pushes a `main` y ejecuciones manuales. En GitHub, los resultados de Trivy y la comprobación de integración se ven en la pestaña **Actions**.
 
-- **Pruebas y cobertura.** Go genera `backend/coverage.out` y Vue genera `frontend/coverage/lcov.info`. El workflow también compila Vue y verifica que el frontend pueda consultar el backend y MongoDB por la ruta de Nginx.
+- **Pruebas y cobertura.** Go genera `backend/coverage.out` y Vue genera `frontend/coverage/lcov.info`. El workflow también compila Vue y verifica que el frontend pueda consultar el backend y PostgreSQL por la ruta de Nginx.
 - **Trivy.** Escanea dependencias del repositorio e imágenes de backend y frontend. En el Hito 0 publica los hallazgos en el log para establecer una línea base. Los umbrales de aprobación corresponden al Hito 2.
 - **SonarQube.** Analiza Go y Vue en `main` e importa ambos informes de cobertura. El archivo `sonar-project.properties` concentra su configuración.
 

@@ -34,8 +34,8 @@ func (s *HealthService) Check(ctx context.Context) models.HealthResponse {
 	defer cancel()
 
 	db := models.DatabaseStatus{
-		Engine:  "MongoDB",
-		Message: "MongoDB no está disponible",
+		Engine:  "PostgreSQL",
+		Message: "PostgreSQL no está disponible",
 	}
 	if err := s.pingDB(ctx); err == nil {
 		db.Connected = true

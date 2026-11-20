@@ -31,36 +31,36 @@ type SolicitudLote struct {
 
 // resume un lote procesado
 type Lote struct {
-	ID                string    `json:"id" bson:"_id"`
-	Origen            string    `json:"origen" bson:"origen"`
-	ReferenciaExterna string    `json:"referencia_externa" bson:"referencia_externa"`
-	Recibidos         int       `json:"recibidos" bson:"recibidos"`
-	Aceptados         int       `json:"aceptados" bson:"aceptados"`
-	Rechazados        int       `json:"rechazados" bson:"rechazados"`
-	CreadoEn          time.Time `json:"creado_en" bson:"creado_en"`
+	ID                string    `json:"id"`
+	Origen            string    `json:"origen"`
+	ReferenciaExterna string    `json:"referencia_externa"`
+	Recibidos         int       `json:"recibidos"`
+	Aceptados         int       `json:"aceptados"`
+	Rechazados        int       `json:"rechazados"`
+	CreadoEn          time.Time `json:"creado_en"`
 
 	// permiten reconocer un reintento del emisor
-	ClaveIdempotencia string `json:"-" bson:"clave_idempotencia,omitempty"`
-	HuellaContenido   string `json:"-" bson:"huella_contenido"`
+	ClaveIdempotencia string `json:"-"`
+	HuellaContenido   string `json:"-"`
 }
 
 // registro limpio y validado
 type Registro struct {
-	ID       string    `json:"id" bson:"_id"`
-	LoteID   string    `json:"lote_id" bson:"lote_id"`
-	Posicion int       `json:"posicion" bson:"posicion"`
-	Folio    string    `json:"folio" bson:"folio"`
-	Nombre   string    `json:"nombre" bson:"nombre"`
-	Correo   string    `json:"correo" bson:"correo"`
-	CreadoEn time.Time `json:"creado_en" bson:"creado_en"`
+	ID       string    `json:"id"`
+	LoteID   string    `json:"lote_id"`
+	Posicion int       `json:"posicion"`
+	Folio    string    `json:"folio"`
+	Nombre   string    `json:"nombre"`
+	Correo   string    `json:"correo"`
+	CreadoEn time.Time `json:"creado_en"`
 }
 
 // explica por que no se acepto un registro del lote
 type Rechazo struct {
-	LoteID   string   `json:"-" bson:"lote_id"`
-	Posicion int      `json:"posicion" bson:"posicion"`
-	Folio    string   `json:"folio" bson:"folio"`
-	Motivos  []string `json:"motivos" bson:"motivos"`
+	LoteID   string   `json:"-"`
+	Posicion int      `json:"posicion"`
+	Folio    string   `json:"folio"`
+	Motivos  []string `json:"motivos"`
 }
 
 // lote con sus rechazos

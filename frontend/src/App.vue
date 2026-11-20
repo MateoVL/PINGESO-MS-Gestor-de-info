@@ -88,7 +88,7 @@
             <div class="card-icon icon-db">DB</div>
             <div>
               <h3>Base de Datos</h3>
-              <p class="card-subtitle">MongoDB</p>
+              <p class="card-subtitle">PostgreSQL</p>
             </div>
             <span class="status-pill" :class="dbConnected ? 'pill-ok' : 'pill-err'">
               {{ dbConnected ? 'CONECTADA' : 'DESCONECTADA' }}
@@ -97,7 +97,7 @@
           <div class="card-body">
             <div class="metric-row">
               <span class="metric-label">Motor</span>
-              <span class="metric-val">{{ health?.database?.engine || 'MongoDB' }}</span>
+              <span class="metric-val">{{ health?.database?.engine || 'PostgreSQL' }}</span>
             </div>
             <div class="metric-row">
               <span class="metric-label">Estado</span>
@@ -179,7 +179,7 @@
         <div class="commands-grid">
           <div class="cmd-item">
             <div class="cmd-code"><code>make dev</code></div>
-            <div class="cmd-desc">Inicia Go, Vue y MongoDB en el entorno de desarrollo.</div>
+            <div class="cmd-desc">Inicia Go, Vue y PostgreSQL en el entorno de desarrollo.</div>
           </div>
           <div class="cmd-item">
             <div class="cmd-code"><code>make prod</code></div>
@@ -235,7 +235,7 @@ const bannerTitle = computed(() => {
 const bannerSubtitle = computed(() => {
   if (loading.value) return 'Consultando endpoint /api/health...'
   if (backendConnected.value && dbConnected.value) {
-    return 'La API de Go está conectada a MongoDB.'
+    return 'La API de Go está conectada a PostgreSQL.'
   }
   if (backendConnected.value && !dbConnected.value) {
     return health.value.database.message

@@ -1,25 +1,36 @@
 package database
 
 import (
+	"context"
 	"errors"
+	"net/url"
+	"strings"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mateo/ms-gestor-de-info/backend/internal/config"
-	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-// ConnectDB crea un cliente que puede recuperar la conexión si MongoDB cae.
-func ConnectDB(cfg *config.Config) (*mongo.Client, error) {
-	if (cfg.MongoUser == "") != (cfg.MongoPassword == "") {
-		return nil, errors.New("MONGO_USER y MONGO_PASSWORD deben configurarse juntos")
+// ConnectDB crea un pool de conexiones que puede recuperar la conexión si PostgreSQL cae.
+func ConnectDB(cfg *config.Config) (*pgxpool.Pool, error) {
+	if (cfg.PostgresUser == "") != (cfg.PostgresPassword == "") {
+		return nil, errors.New("POSTGRES_USER y POSTGRES_PASSWORD deben configurarse juntos")
 	}
-	opts := options.Client().ApplyURI(cfg.MongoURI)
-	if cfg.MongoUser != "" {
-		opts.SetAuth(options.Credential{
-			AuthSource: cfg.MongoDatabase,
-			Username:   cfg.MongoUser,
-			Password:   cfg.MongoPassword,
-		})
+
+	connURI := cfg.PostgresURI
+	u, err := url.Parse(connURI)
+	if err != nil {
+		return nil, err
 	}
-	return mongo.Connect(opts)
+	if cfg.PostgresUser != "" {
+		u.User = url.UserPassword(cfg.PostgresUser, cfg.PostgresPassword)
+	}
+	if (u.Path == "" || u.Path == "/") && cfg.PostgresDatabase != "" {
+		u.Path = "/" + strings.TrimPrefix(cfg.PostgresDatabase, "/")
+	}
+
+	poolCfg, err := pgxpool.ParseConfig(u.String())
+	if err != nil {
+		return nil, err
+	}
+	return pgxpool.NewWithConfig(context.Background(), poolCfg)
 }

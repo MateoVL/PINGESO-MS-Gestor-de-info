@@ -7,9 +7,9 @@ function healthResponse(connected) {
   return Response.json({
     status: connected ? 'healthy' : 'degraded',
     database: {
-      engine: 'MongoDB',
+      engine: 'PostgreSQL',
       connected,
-      message: connected ? 'Base de datos conectada y operativa' : 'MongoDB no está disponible',
+      message: connected ? 'Base de datos conectada y operativa' : 'PostgreSQL no está disponible',
     },
   }, { status: connected ? 200 : 503 })
 }
@@ -28,7 +28,7 @@ function renderPanel() {
   return panel
 }
 
-it('consulta la API y muestra la recuperación de MongoDB al revisar el estado', async () => {
+it('consulta la API y muestra la recuperación de PostgreSQL al revisar el estado', async () => {
   const fetch = vi.fn()
     .mockResolvedValueOnce(healthResponse(false))
     .mockResolvedValueOnce(healthResponse(true))
@@ -38,7 +38,7 @@ it('consulta la API y muestra la recuperación de MongoDB al revisar el estado',
   await vi.waitFor(() => expect(panel.querySelector('.status-degraded')).not.toBeNull())
 
   expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/\/api\/health$/), expect.any(Object))
-  expect(panel.textContent).toContain('MongoDB no está disponible')
+  expect(panel.textContent).toContain('PostgreSQL no está disponible')
 
   panel.querySelector('button').click()
   await vi.waitFor(() => expect(panel.querySelector('.status-healthy')).not.toBeNull())

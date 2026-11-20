@@ -42,18 +42,12 @@ func run() error {
 	// El driver conecta en segundo plano y el diagnóstico verifica la disponibilidad.
 	db, err := database.ConnectDB(cfg)
 	if err != nil {
-		return fmt.Errorf("no se pudo crear el cliente de MongoDB, revisa MONGO_URI y las credenciales: %w", err)
+		return fmt.Errorf("no se pudo crear el cliente de PostgreSQL, revisa POSTGRES_URI y las credenciales: %w", err)
 	}
-	defer func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := db.Disconnect(ctx); err != nil {
-			logger.Error("error al cerrar el cliente de MongoDB", slog.String("error", err.Error()))
-		}
-	}()
+	defer db.Close()
 
 	healthService := services.NewHealthService(cfg.Service, func(ctx context.Context) error {
-		return db.Ping(ctx, nil)
+		return db.Ping(ctx)
 	})
 
 	batchService := services.NewBatchService(repositories.NewMemoryBatchRepository())
@@ -94,7 +88,7 @@ func run() error {
 			slog.String("service", cfg.AppName),
 			slog.String("environment", cfg.AppEnv),
 			slog.String("addr", srv.Addr),
-			slog.String("database", cfg.MongoDatabase),
+			slog.String("database", cfg.PostgresDatabase),
 		)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			serverErr <- err

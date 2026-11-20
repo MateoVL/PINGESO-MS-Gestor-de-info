@@ -57,8 +57,8 @@ func TestHealthEndpoints(t *testing.T) {
 		code    int
 		status  string
 	}{
-		{"MongoDB disponible", nil, http.StatusOK, models.HealthStatusHealthy},
-		{"MongoDB caído", errors.New("internal MongoDB error"), http.StatusServiceUnavailable, models.HealthStatusDegraded},
+		{"PostgreSQL disponible", nil, http.StatusOK, models.HealthStatusHealthy},
+		{"PostgreSQL caído", errors.New("internal PostgreSQL error"), http.StatusServiceUnavailable, models.HealthStatusDegraded},
 	} {
 		for _, path := range []string{"/health", "/api/health"} {
 			t.Run(tc.name+" "+path, func(t *testing.T) {
@@ -71,11 +71,11 @@ func TestHealthEndpoints(t *testing.T) {
 				if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 					t.Fatalf("diagnóstico inválido: %v", err)
 				}
-				if body.Status != tc.status || body.Database.Engine != "MongoDB" {
+				if body.Status != tc.status || body.Database.Engine != "PostgreSQL" {
 					t.Errorf("diagnóstico inesperado: %+v", body)
 				}
-				if strings.Contains(rec.Body.String(), "internal MongoDB error") {
-					t.Error("el diagnóstico publicó un error interno de MongoDB")
+				if strings.Contains(rec.Body.String(), "internal PostgreSQL error") {
+					t.Error("el diagnóstico publicó un error interno de PostgreSQL")
 				}
 			})
 		}

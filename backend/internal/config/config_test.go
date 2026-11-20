@@ -6,7 +6,7 @@ import (
 )
 
 func TestLoadDefaults(t *testing.T) {
-	for _, key := range []string{"APP_ENV", "GIN_MODE", "LOG_LEVEL", "BACKEND_PORT", "MONGO_USER", "MONGO_PASSWORD", "SERVICE_ROLE", "SERVICE_DEPENDS_ON", "SERVICE_CONSUMERS", "SERVICE_CAPABILITIES"} {
+	for _, key := range []string{"APP_ENV", "GIN_MODE", "LOG_LEVEL", "BACKEND_PORT", "POSTGRES_USER", "POSTGRES_PASSWORD", "SERVICE_ROLE", "SERVICE_DEPENDS_ON", "SERVICE_CONSUMERS", "SERVICE_CAPABILITIES"} {
 		t.Setenv(key, "")
 	}
 
@@ -53,10 +53,10 @@ func TestLoadRejectsInvalidValues(t *testing.T) {
 		{"entorno desconocido", "APP_ENV", "staging", "APP_ENV"},
 		{"modo de Gin desconocido", "GIN_MODE", "verbose", "GIN_MODE"},
 		{"nivel de log desconocido", "LOG_LEVEL", "trace", "LOG_LEVEL"},
-		{"usuario sin contraseña", "MONGO_USER", "solo_usuario", "MONGO_PASSWORD"},
+		{"usuario sin contraseña", "POSTGRES_USER", "solo_usuario", "POSTGRES_PASSWORD"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Setenv("MONGO_PASSWORD", "")
+			t.Setenv("POSTGRES_PASSWORD", "")
 			t.Setenv(tc.key, tc.value)
 
 			_, err := Load()

@@ -55,7 +55,7 @@ func TestRespondErrorKnownError(t *testing.T) {
 }
 
 func TestRespondErrorUnknownErrorIsHidden(t *testing.T) {
-	rec, c := respond(errors.New("conexión rechazada por mongo:27017"))
+	rec, c := respond(errors.New("conexión rechazada por postgres:5432"))
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("código HTTP %d, se esperaba 500", rec.Code)
@@ -63,7 +63,7 @@ func TestRespondErrorUnknownErrorIsHidden(t *testing.T) {
 	if body := decode(t, rec); body.Code != "internal_error" {
 		t.Errorf("código inesperado: %q", body.Code)
 	}
-	if strings.Contains(rec.Body.String(), "mongo") {
+	if strings.Contains(rec.Body.String(), "postgres") {
 		t.Error("el error interno se filtró al cliente")
 	}
 	if len(c.Errors) != 1 {

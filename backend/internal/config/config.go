@@ -19,10 +19,10 @@ type Config struct {
 	LogLevel       string
 	AllowedOrigins []string
 
-	MongoURI      string
-	MongoDatabase string
-	MongoUser     string
-	MongoPassword string
+	PostgresURI      string
+	PostgresDatabase string
+	PostgresUser     string
+	PostgresPassword string
 
 	MSDigitalizacionURL string
 	MSReportesURL       string
@@ -55,10 +55,10 @@ func Load() (*Config, error) {
 		LogLevel:       strings.ToLower(getEnv("LOG_LEVEL", "info")),
 		AllowedOrigins: getList("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"),
 
-		MongoURI:      getEnv("MONGO_URI", "mongodb://127.0.0.1:27017"),
-		MongoDatabase: getEnv("MONGO_DATABASE", "gestor_info_db"),
-		MongoUser:     os.Getenv("MONGO_USER"),
-		MongoPassword: os.Getenv("MONGO_PASSWORD"),
+		PostgresURI:      getEnv("POSTGRES_URI", "postgres://127.0.0.1:5432/gestor_info_db?sslmode=disable"),
+		PostgresDatabase: getEnv("POSTGRES_DB", "gestor_info_db"),
+		PostgresUser:     os.Getenv("POSTGRES_USER"),
+		PostgresPassword: os.Getenv("POSTGRES_PASSWORD"),
 
 		MSDigitalizacionURL: getEnv("MS_DIGITALIZACION_URL", "http://localhost:8081"),
 		MSReportesURL:       getEnv("MS_REPORTES_URL", "http://localhost:8082"),
@@ -98,8 +98,8 @@ func (c *Config) validate() error {
 	if len(c.AllowedOrigins) == 0 {
 		errs = append(errs, errors.New("CORS_ALLOWED_ORIGINS no puede quedar vacío"))
 	}
-	if (c.MongoUser == "") != (c.MongoPassword == "") {
-		errs = append(errs, errors.New("MONGO_USER y MONGO_PASSWORD deben configurarse juntos"))
+	if (c.PostgresUser == "") != (c.PostgresPassword == "") {
+		errs = append(errs, errors.New("POSTGRES_USER y POSTGRES_PASSWORD deben configurarse juntos"))
 	}
 
 	return errors.Join(errs...)

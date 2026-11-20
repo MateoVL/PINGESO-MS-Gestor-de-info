@@ -66,8 +66,8 @@ logs-prod: ## Sigue los logs en tiempo real de producción
 # ==============================================================================
 # Modo 3: Ejecución Local Nativa (Host)
 # ==============================================================================
-local-db: env ## Levanta únicamente MongoDB en Docker para desarrollo nativo
-	docker compose --env-file $(ENV_FILE) -f docker-compose.yml up -d --wait mongodb
+local-db: env ## Levanta únicamente PostgreSQL en Docker para desarrollo nativo
+	docker compose --env-file $(ENV_FILE) -f docker-compose.yml up -d --wait postgres
 
 local-back: env ## Ejecuta el backend Go localmente en el host
 	cd backend && go run ./cmd/api
