@@ -1,3 +1,5 @@
+name: ms-gestor-de-info
+
 services:
   postgres:
     image: postgres:17.11
@@ -24,12 +26,12 @@ services:
 
   migrate:
     build:
-      context: ./apps/api
-      dockerfile: Dockerfile.migrate
+      context: .
+      dockerfile: apps/api/Dockerfile.migrate
     container_name: gestor_info_migrate_dev
-    command:
-      - "postgres://${POSTGRES_USER:-gestor_user}:${POSTGRES_PASSWORD:-dev-gestor-password}@postgres:5432/${POSTGRES_DB:-gestor_info_db}?sslmode=disable"
-      - "up"
+    restart: "no"
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-gestor_user}:${POSTGRES_PASSWORD:-dev-gestor-password}@postgres:5432/${POSTGRES_DB:-gestor_info_db}?sslmode=disable
     depends_on:
       postgres:
         condition: service_healthy
@@ -38,51 +40,73 @@ services:
 
   backend:
     build:
-      context: ./apps/api
-      dockerfile: Dockerfile.dev
+      context: .
+      dockerfile: apps/api/Dockerfile
     container_name: gestor_info_backend_dev
     restart: unless-stopped
     ports:
-      - "${BACKEND_PORT:-8080}:8080"
+      - "127.0.0.1:${BACKEND_PORT:-5121}:8080"
     environment:
       APP_ENV: ${APP_ENV:-development}
       API_ENV: ${API_ENV:-dev}
       APP_NAME: ${APP_NAME:-MS Gestor de Información}
       BACKEND_PORT: 8080
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5120,http://127.0.0.1:5120,http://localhost:3000,http://127.0.0.1:3000}
       POSTGRES_URI: postgres://postgres:5432/${POSTGRES_DB:-gestor_info_db}?sslmode=disable
       POSTGRES_DB: ${POSTGRES_DB:-gestor_info_db}
       POSTGRES_USER: ${POSTGRES_USER:-gestor_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev-gestor-password}
-      MS_DIGITALIZACION_URL: ${MS_DIGITALIZACION_URL:-http://localhost:8081}
-      MS_REPORTES_URL: ${MS_REPORTES_URL:-http://localhost:8082}
+      MS_DIGITALIZACION_URL: ${MS_DIGITALIZACION_URL:-http://localhost:5151}
+      MS_REPORTES_URL: ${MS_REPORTES_URL:-http://localhost:5111}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       SERVICE_ROLE: ${SERVICE_ROLE:-}
       SERVICE_DEPENDS_ON: ${SERVICE_DEPENDS_ON:-}
       SERVICE_CONSUMERS: ${SERVICE_CONSUMERS:-}
       SERVICE_CAPABILITIES: ${SERVICE_CAPABILITIES:-}
-    volumes:
-      - ./apps/api:/app
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     networks:
       - gestor_net
 
   frontend:
     build:
       context: .
-      dockerfile: ./apps/web/Dockerfile.dev
+      dockerfile: apps/web/Dockerfile
     container_name: gestor_info_frontend_dev
     restart: unless-stopped
     ports:
-      - "${FRONTEND_PORT:-3000}:3000"
+      - "127.0.0.1:${FRONTEND_PORT:-5120}:8080"
     environment:
-      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:${BACKEND_PORT:-8080}}
+      PORT: "8080"
+      BACKEND_URL: http://backend:8080
+    depends_on:
+      - backend
+    networks:
+      - gestor_net
+
+  seed:
+    image: alpine:3.23.7
+    container_name: gestor_info_seed_dev
+    profiles: ["dev"]
+    restart: "no"
     volumes:
-      - ./apps/web:/workspace/apps/web
-      - /workspace/node_modules
-      - /workspace/apps/web/node_modules
+      - ./apps/api/internal/api/lote-sucio.json:/seed/lote-sucio.json:ro
+    command:
+      - sh
+      - -c
+      - >-
+        for i in 1 2 3 4 5 6 7 8 9 10; do
+          wget -qO- http://backend:8080/readyz >/dev/null 2>&1 && break;
+          sleep 1;
+        done &&
+        wget -qO-
+        --header="Content-Type: application/json"
+        --header="Idempotency-Key: lote-demo"
+        --post-file=/seed/lote-sucio.json
+        http://backend:8080/api/v1/lotes
     depends_on:
       - backend
     networks:
@@ -104,4 +128,3 @@ volumes:
 networks:
   gestor_net:
     driver: bridge
-

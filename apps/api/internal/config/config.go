@@ -61,7 +61,7 @@ func Load() (*Config, error) {
 		APIEnv:         apiEnv,
 		Port:           getEnv("BACKEND_PORT", "8080"),
 		LogLevel:       strings.ToLower(getEnv("LOG_LEVEL", "info")),
-		AllowedOrigins: getList("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"),
+		AllowedOrigins: getList("CORS_ALLOWED_ORIGINS", "http://localhost:5120,http://127.0.0.1:5120,http://localhost:3000,http://127.0.0.1:3000"),
 
 		PostgresURI:      getEnv("POSTGRES_URI", "postgres://127.0.0.1:5432/gestor_info_db?sslmode=disable"),
 		PostgresDatabase: getEnv("POSTGRES_DB", "gestor_info_db"),

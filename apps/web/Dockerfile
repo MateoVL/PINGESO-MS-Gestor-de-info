@@ -1,40 +1,28 @@
-# Etapa 1: Build de React con Node 22.22.0-alpine3.23 y pnpm 10.13.1 (fijados según sección 3 de AGENTS.md)
-FROM node:22.22.0-alpine3.23@sha256:e4bf2a82ad0a4037d28035ae71529873c069b13eb0455466ae0bc13363826e34 AS web-builder
-
-WORKDIR /workspace
-
+# syntax=docker/dockerfile:1.7
+FROM --platform=$BUILDPLATFORM node:22.22.0-alpine3.23@sha256:e4bf2a82ad0a4037d28035ae71529873c069b13eb0455466ae0bc13363826e34 AS build-web
+WORKDIR /src
 RUN corepack enable && corepack prepare pnpm@10.13.1 --activate
-
-COPY .npmrc package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
+COPY .npmrc package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/web/package.json ./apps/web/package.json
-
-RUN pnpm install --frozen-lockfile
-
-COPY apps/web ./apps/web
-
-ARG VITE_API_BASE_URL
-ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
-
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile --ignore-scripts
+COPY apps/web/ ./apps/web/
 RUN pnpm --filter @pingeso/ms-gestor-de-info-ui build
 
-# Etapa 2: Compilar servidor estático ultraligero para distroless
-FROM golang:1.26.5-alpine3.23@sha256:622e56dbc11a8cfe87cafa2331e9a201877271cbff918af53d3be315f3da88cc AS server-builder
-
-WORKDIR /srv
+FROM --platform=$BUILDPLATFORM golang:1.26.5-alpine3.23@sha256:622e56dbc11a8cfe87cafa2331e9a201877271cbff918af53d3be315f3da88cc AS build-server
+WORKDIR /src
 COPY apps/web/server.go ./server.go
-RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /srv/web-server ./server.go
+ARG TARGETOS TARGETARCH VERSION=dev
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
+    go build -buildvcs=false -trimpath \
+    -ldflags="-s -w -X main.version=$VERSION" \
+    -o /out/spa-server ./server.go
 
-# Etapa 3: Runtime distroless static-debian13:nonroot fijado por digest según sección 3 de AGENTS.md
 FROM gcr.io/distroless/static-debian13:nonroot@sha256:f7f8f729987ad0fdf6b05eeeae94b26e6a0f613bdf46feea7fc40f7bd72953e6
-
 WORKDIR /app
-
-COPY --from=server-builder /srv/web-server /app/web-server
-COPY --from=web-builder /workspace/apps/web/dist /app/dist
-
+COPY --from=build-server --chown=nonroot:nonroot /out/spa-server /app/spa-server
+COPY --from=build-web --chown=nonroot:nonroot /src/apps/web/dist /srv
 USER nonroot:nonroot
-
-EXPOSE 3000
-
-ENTRYPOINT ["/app/web-server"]
-
+EXPOSE 8080
+ENTRYPOINT ["/app/spa-server"]

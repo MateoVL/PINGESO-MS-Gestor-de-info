@@ -84,7 +84,13 @@ jobs:
         run: |
           docker compose --env-file .env.example -f docker-compose.prod.yml up -d --build --wait --wait-timeout 120
           curl --fail --silent --show-error --retry 20 --retry-delay 2 --retry-all-errors \
-            http://localhost:3000/api/health | jq -e '.status == "healthy" and .database.engine == "PostgreSQL" and .database.connected'
+            http://127.0.0.1:5120/healthz | jq -e '.status == "ok"'
+          curl --fail --silent --show-error --retry 20 --retry-delay 2 --retry-all-errors \
+            http://127.0.0.1:5121/healthz | jq -e '.status == "ok"'
+          curl --fail --silent --show-error --retry 20 --retry-delay 2 --retry-all-errors \
+            http://127.0.0.1:5121/readyz | jq -e '.status == "healthy" and .database.engine == "PostgreSQL" and .database.connected'
+          curl --fail --silent --show-error --retry 20 --retry-delay 2 --retry-all-errors \
+            http://127.0.0.1:5120/api/health | jq -e '.status == "healthy" and .database.engine == "PostgreSQL" and .database.connected'
       - name: Escanear imágenes de backend y frontend con Trivy
         run: |
           for service in backend frontend; do

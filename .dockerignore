@@ -1,0 +1,27 @@
+# Entorno y secretos (nunca incluir en imágenes)
+.env
+.env.*
+*.env
+!.env.example
+
+# Control de versiones
+.git
+.gitignore
+.github
+
+# Dependencias y artefactos locales
+node_modules
+**/node_modules
+dist
+**/dist
+coverage
+**/coverage
+*.out
+*.test
+
+# Documentación y metadatos de IDE
+.vscode
+.idea
+*.md
+!apps/api/e2e/testdata/*.golden.md
+

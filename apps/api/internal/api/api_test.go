@@ -52,7 +52,7 @@ func TestHealthEndpoints(t *testing.T) {
 		{"PostgreSQL disponible", nil, http.StatusOK, service.HealthStatusHealthy},
 		{"PostgreSQL caído", errors.New("internal PostgreSQL error"), http.StatusServiceUnavailable, service.HealthStatusDegraded},
 	} {
-		for _, path := range []string{"/health", "/api/health"} {
+		for _, path := range []string{"/readyz", "/health", "/api/health"} {
 			t.Run(tc.name+" "+path, func(t *testing.T) {
 				rec := do(newTestRouter(tc.pingErr), http.MethodGet, path, nil)
 
@@ -71,6 +71,17 @@ func TestHealthEndpoints(t *testing.T) {
 				}
 			})
 		}
+
+		t.Run(tc.name+" /healthz (vivo)", func(t *testing.T) {
+			rec := do(newTestRouter(tc.pingErr), http.MethodGet, "/healthz", nil)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("/healthz debe responder 200 OK incluso si PostgreSQL falla, se obtuvo %d", rec.Code)
+			}
+			var body LivenessStatus
+			if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil || body.Status != "ok" {
+				t.Fatalf("respuesta inesperada en /healthz: %s (%v)", rec.Body.String(), err)
+			}
+		})
 	}
 }
 

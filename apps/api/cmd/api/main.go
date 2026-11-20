@@ -20,6 +20,8 @@ import (
 
 const shutdownTimeout = 10 * time.Second
 
+var version = "dev"
+
 func main() {
 	if err := run(); err != nil {
 		slog.Error("el servicio terminó con error", slog.String("error", err.Error()))
@@ -82,6 +84,7 @@ func run() error {
 	go func() {
 		logger.Info("servidor iniciado",
 			slog.String("service", cfg.AppName),
+			slog.String("version", version),
 			slog.String("environment", cfg.AppEnv),
 			slog.String("api_env", cfg.APIEnv),
 			slog.String("addr", srv.Addr),

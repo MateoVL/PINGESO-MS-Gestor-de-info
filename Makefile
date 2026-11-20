@@ -104,6 +104,7 @@ test: ## Ejecuta pruebas de Go y React y genera sus reportes de cobertura
 	cd apps/api && go test -coverpkg=./... -coverprofile=coverage.out ./...
 	pnpm install --frozen-lockfile && pnpm test:coverage
 
-clean: ## Limpia contenedores, redes y volúmenes temporales de Docker
-	@echo "--> Limpiando contenedores huérfanos y volúmenes de desarrollo..."
-	docker compose -f docker-compose.yaml down -v --remove-orphans
+clean: ## Limpia contenedores, redes, volúmenes e imágenes locales del proyecto
+	@echo "--> Limpiando contenedores, redes, volúmenes e imágenes locales..."
+	docker compose --profile dev -f docker-compose.yaml down -v --rmi local --remove-orphans
+	docker compose --env-file .env.example -f docker-compose.prod.yml down -v --rmi local --remove-orphans
