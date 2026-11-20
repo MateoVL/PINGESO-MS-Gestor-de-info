@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -19,6 +18,11 @@ type Config struct {
 	LogLevel       string
 	AllowedOrigins []string
 
+	DatabaseURL string
+	AuthJWKSURL string
+	FrontendURL string
+	TZ          string
+
 	PostgresURI      string
 	PostgresDatabase string
 	PostgresUser     string
@@ -26,6 +30,9 @@ type Config struct {
 
 	MSDigitalizacionURL string
 	MSReportesURL       string
+	DigitalizacionURL   string
+	ReportesURL         string
+	IdentidadURL        string
 
 	Service ServiceInfo
 }
@@ -50,26 +57,56 @@ func Load() (*Config, error) {
 	if apiEnv == "" {
 		if appEnv == "development" {
 			apiEnv = "dev"
+		} else if appEnv == "production" {
+			apiEnv = "prod"
 		} else {
 			apiEnv = appEnv
 		}
 	}
 
+	port := getEnv("API_PORT", "")
+	if port == "" {
+		port = getEnv("BACKEND_PORT", "")
+	}
+
+	databaseURL := getEnv("DATABASE_URL", "")
+	if databaseURL == "" {
+		databaseURL = getEnv("POSTGRES_URI", "")
+	}
+
+	frontendURL := getEnv("FRONTEND_URL", "")
+	allowedOrigins := getList("CORS_ALLOWED_ORIGINS", "")
+	if frontendURL != "" && !contains(allowedOrigins, frontendURL) {
+		allowedOrigins = append(allowedOrigins, frontendURL)
+	}
+
+	digitalizacionURL := getEnv("DIGITALIZACION_URL", getEnv("MS_DIGITALIZACION_URL", "http://localhost:5151"))
+	reportesURL := getEnv("REPORTES_URL", getEnv("MS_REPORTES_URL", "http://localhost:5111"))
+	identidadURL := getEnv("IDENTIDAD_URL", "http://localhost:5101")
+
 	cfg := &Config{
 		AppName:        getEnv("APP_NAME", "MS Gestor de Información"),
 		AppEnv:         appEnv,
 		APIEnv:         apiEnv,
-		Port:           getEnv("BACKEND_PORT", "8080"),
+		Port:           port,
 		LogLevel:       strings.ToLower(getEnv("LOG_LEVEL", "info")),
-		AllowedOrigins: getList("CORS_ALLOWED_ORIGINS", "http://localhost:5120,http://127.0.0.1:5120,http://localhost:3000,http://127.0.0.1:3000"),
+		AllowedOrigins: allowedOrigins,
 
-		PostgresURI:      getEnv("POSTGRES_URI", "postgres://127.0.0.1:5432/gestor_info_db?sslmode=disable"),
+		DatabaseURL: databaseURL,
+		AuthJWKSURL: getEnv("AUTH_JWKS_URL", ""),
+		FrontendURL: frontendURL,
+		TZ:          getEnv("TZ", ""),
+
+		PostgresURI:      databaseURL,
 		PostgresDatabase: getEnv("POSTGRES_DB", "gestor_info_db"),
 		PostgresUser:     os.Getenv("POSTGRES_USER"),
 		PostgresPassword: os.Getenv("POSTGRES_PASSWORD"),
 
-		MSDigitalizacionURL: getEnv("MS_DIGITALIZACION_URL", "http://localhost:8081"),
-		MSReportesURL:       getEnv("MS_REPORTES_URL", "http://localhost:8082"),
+		DigitalizacionURL:   digitalizacionURL,
+		ReportesURL:         reportesURL,
+		IdentidadURL:        identidadURL,
+		MSDigitalizacionURL: digitalizacionURL,
+		MSReportesURL:       reportesURL,
 	}
 
 	cfg.Service = ServiceInfo{
@@ -90,17 +127,31 @@ func Load() (*Config, error) {
 func (c *Config) validate() error {
 	var errs []error
 
-	if !oneOf(c.AppEnv, "development", "test", "production") {
-		errs = append(errs, fmt.Errorf("APP_ENV debe ser development, test o production (valor: %q)", c.AppEnv))
+	// Variables obligatorias según AGENTS.md sección 5
+	if c.Port != "8080" {
+		errs = append(errs, fmt.Errorf("API_PORT es obligatoria y debe ser siempre 8080 (valor: %q)", c.Port))
 	}
+	if !oneOf(c.APIEnv, "dev", "test", "prod") {
+		errs = append(errs, fmt.Errorf("API_ENV es obligatoria y debe ser dev, test o prod (valor: %q)", c.APIEnv))
+	}
+	if strings.TrimSpace(c.DatabaseURL) == "" {
+		errs = append(errs, errors.New("DATABASE_URL es obligatoria"))
+	}
+	if strings.TrimSpace(c.AuthJWKSURL) == "" {
+		errs = append(errs, errors.New("AUTH_JWKS_URL es obligatoria"))
+	}
+	if strings.TrimSpace(c.FrontendURL) == "" {
+		errs = append(errs, errors.New("FRONTEND_URL es obligatoria"))
+	}
+	if c.TZ != "America/Santiago" {
+		errs = append(errs, fmt.Errorf("TZ es obligatoria y debe ser America/Santiago (valor: %q)", c.TZ))
+	}
+
 	if !oneOf(c.LogLevel, "debug", "info", "warn", "error") {
 		errs = append(errs, fmt.Errorf("LOG_LEVEL debe ser debug, info, warn o error (valor: %q)", c.LogLevel))
 	}
-	if port, err := strconv.Atoi(c.Port); err != nil || port < 1 || port > 65535 {
-		errs = append(errs, fmt.Errorf("BACKEND_PORT debe ser un puerto entre 1 y 65535 (valor: %q)", c.Port))
-	}
 	if len(c.AllowedOrigins) == 0 {
-		errs = append(errs, errors.New("CORS_ALLOWED_ORIGINS no puede quedar vacío"))
+		errs = append(errs, errors.New("AllowedOrigins no puede quedar vacío (define FRONTEND_URL o CORS_ALLOWED_ORIGINS)"))
 	}
 	if (c.PostgresUser == "") != (c.PostgresPassword == "") {
 		errs = append(errs, errors.New("POSTGRES_USER y POSTGRES_PASSWORD deben configurarse juntos"))
@@ -117,7 +168,11 @@ func getEnv(key, fallback string) string {
 }
 
 func getList(key, fallback string) []string {
-	parts := strings.Split(getEnv(key, fallback), ",")
+	val := getEnv(key, fallback)
+	if val == "" {
+		return nil
+	}
+	parts := strings.Split(val, ",")
 	result := make([]string, 0, len(parts))
 	for _, p := range parts {
 		if trimmed := strings.TrimSpace(p); trimmed != "" {
@@ -136,3 +191,11 @@ func oneOf(value string, options ...string) bool {
 	return false
 }
 
+func contains(list []string, item string) bool {
+	for _, s := range list {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}

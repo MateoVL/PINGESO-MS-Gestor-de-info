@@ -206,3 +206,37 @@ Sirve la app de desarrollo local de cada repo y es la plantilla para la app que 
 5. Perfil `dev`: `seed` (datos de demo) y `mailpit` (SMTP falso en `:8025`). Fuera de desarrollo no se define `COMPOSE_PROFILES`
 
 Cada servicio recibe un número N en el documento de componentes de su sección y usa un rango de puertos locales propio, para que un desarrollador pueda levantar varios a la vez: `51N0` (web) y `51N1` (api). Ejemplo: el servicio 2 usa 5120 y 5121.
+
+
+## 5. Datos, migraciones, configuración y secretos
+
+Cada servicio tiene su propia base PostgreSQL y nadie más se conecta a ella. Si un servicio necesita datos de otro, los pide a su API. Un `JOIN` contra la base de otro servicio se rechaza.
+
+### Migraciones
+
+- Toda modificación de esquema es una migración goose nueva en `db/migrations/`. Una migración ya desplegada no se edita.
+- Las queries viven en `db/queries/*.sql` y `make generate` regenera `internal/repository/` con sqlc. Ese directorio no se edita a mano.
+- La API nunca migra al arrancar. Corre primero el contenedor `migrate` y después la API.
+- Los montos se guardan como enteros en pesos (`bigint`), nunca como `float`. Las fechas, como `timestamptz`.
+- Los identificadores expuestos en la API son UUID.
+
+### Configuración
+
+Toda la configuración entra por variables de entorno, se valida al arrancar y el proceso termina si falta una obligatoria. `.env.example` lista todas las variables con valores `replace-with-*` y `.env` nunca se commitea.
+
+| Variable | Uso | Obligatoria |
+| --- | --- | --- |
+| `API_PORT` | Puerto interno, siempre 8080 | Sí |
+| `API_ENV` | `dev`, `test` o `prod`. En `prod` no se publican `/api/docs` ni el spec | Sí |
+| `DATABASE_URL` | Conexión a la base propia. Dentro de Compose apunta al nombre del servicio, no a `localhost` | Sí |
+| `AUTH_JWKS_URL` | Llaves públicas del servicio de identidad para validar tokens | Sí, salvo el servicio de identidad |
+| `<SERVICIO>_URL` | URL de cada servicio del que se depende (ej. `IDENTIDAD_URL`) | Según dependencias |
+| `FRONTEND_URL` | Origen permitido y base de enlaces | Sí |
+| `TZ` | `America/Santiago` | Sí |
+
+### Secretos
+
+- Ningún secreto en el repositorio, en la imagen, en `ARG` de Docker ni en variables `VITE_*` (todo `VITE_*` termina en el bundle público).
+- En CI los secretos van en GitHub Actions Secrets. En local van en un `.env` fuera del control de versiones.
+- Gitleaks bloquea el commit si detecta un secreto (sección 6). Si uno se filtra igual, se rota de inmediato: borrarlo del historial no basta.
+- La sesión viaja en cookie `HttpOnly`, `Secure`, `SameSite=Lax`. `localStorage` y `sessionStorage` están prohibidos en todo el frontend.

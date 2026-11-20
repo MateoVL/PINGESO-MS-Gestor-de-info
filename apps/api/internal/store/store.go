@@ -146,16 +146,15 @@ type BatchStore interface {
 
 // ConnectDB crea un pool de conexiones hacia PostgreSQL
 func ConnectDB(cfg *config.Config) (*pgxpool.Pool, error) {
-	if (cfg.PostgresUser == "") != (cfg.PostgresPassword == "") {
-		return nil, errors.New("POSTGRES_USER y POSTGRES_PASSWORD deben configurarse juntos")
+	connURI := cfg.DatabaseURL
+	if connURI == "" {
+		connURI = cfg.PostgresURI
 	}
-
-	connURI := cfg.PostgresURI
 	u, err := url.Parse(connURI)
 	if err != nil {
 		return nil, err
 	}
-	if cfg.PostgresUser != "" {
+	if cfg.PostgresUser != "" && u.User == nil {
 		u.User = url.UserPassword(cfg.PostgresUser, cfg.PostgresPassword)
 	}
 	if (u.Path == "" || u.Path == "/") && cfg.PostgresDatabase != "" {
