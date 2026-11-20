@@ -5,29 +5,42 @@ import (
 	"testing"
 )
 
-func TestLoadDefaults(t *testing.T) {
-	for _, key := range []string{"APP_ENV", "API_ENV", "LOG_LEVEL", "BACKEND_PORT", "POSTGRES_USER", "POSTGRES_PASSWORD", "SERVICE_ROLE", "SERVICE_DEPENDS_ON", "SERVICE_CONSUMERS", "SERVICE_CAPABILITIES"} {
-		t.Setenv(key, "")
-	}
+func setValidEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("API_PORT", "8080")
+	t.Setenv("API_ENV", "dev")
+	t.Setenv("DATABASE_URL", "postgres://gestor_user:dev-gestor-password@postgres:5432/gestor_info_db?sslmode=disable")
+	t.Setenv("AUTH_JWKS_URL", "http://localhost:5101/api/v1/auth/jwks")
+	t.Setenv("FRONTEND_URL", "http://localhost:5120")
+	t.Setenv("TZ", "America/Santiago")
+	t.Setenv("LOG_LEVEL", "info")
+	t.Setenv("APP_NAME", "MS Gestor de Información")
+	t.Setenv("APP_ENV", "development")
+}
+
+func TestLoadValid(t *testing.T) {
+	setValidEnv(t)
 
 	cfg, err := Load()
 	if err != nil {
-		t.Fatalf("la configuración por defecto debería ser válida: %v", err)
+		t.Fatalf("la configuración válida falló: %v", err)
 	}
-	if cfg.Port != "8080" || cfg.AppEnv != "development" || cfg.APIEnv != "dev" || cfg.LogLevel != "info" {
-		t.Errorf("valores por defecto inesperados: %+v", cfg)
+	if cfg.Port != "8080" || cfg.APIEnv != "dev" || cfg.TZ != "America/Santiago" {
+		t.Errorf("valores inesperados: %+v", cfg)
 	}
-	if cfg.Service.Name != cfg.AppName || cfg.Service.Environment != cfg.AppEnv {
-		t.Errorf("la identidad del servicio debe reflejar APP_NAME y APP_ENV: %+v", cfg.Service)
+	if cfg.DatabaseURL != "postgres://gestor_user:dev-gestor-password@postgres:5432/gestor_info_db?sslmode=disable" {
+		t.Errorf("DATABASE_URL inesperada: %q", cfg.DatabaseURL)
 	}
-	s := cfg.Service
-	if s.Role != "" || s.DependsOn == nil || s.Consumers == nil || s.Capabilities == nil ||
-		len(s.DependsOn)+len(s.Consumers)+len(s.Capabilities) != 0 {
-		t.Errorf("la identidad por defecto debe estar vacía: %+v", s)
+	if cfg.AuthJWKSURL != "http://localhost:5101/api/v1/auth/jwks" {
+		t.Errorf("AUTH_JWKS_URL inesperada: %q", cfg.AuthJWKSURL)
+	}
+	if cfg.FrontendURL != "http://localhost:5120" {
+		t.Errorf("FRONTEND_URL inesperada: %q", cfg.FrontendURL)
 	}
 }
 
 func TestLoadServiceInfoFromEnv(t *testing.T) {
+	setValidEnv(t)
 	t.Setenv("SERVICE_ROLE", "Grupo 9 · Ejemplo")
 	t.Setenv("SERVICE_CONSUMERS", " Reportes , , Plantillas ")
 
@@ -43,19 +56,84 @@ func TestLoadServiceInfoFromEnv(t *testing.T) {
 	}
 }
 
-func TestLoadRejectsInvalidValues(t *testing.T) {
-	for _, tc := range []struct {
-		name, key, value, wantMsg string
+func TestLoadRejectsMissingOrInvalidMandatoryVariables(t *testing.T) {
+	testCases := []struct {
+		name    string
+		mutate  func(t *testing.T)
+		wantMsg string
 	}{
-		{"puerto no numérico", "BACKEND_PORT", "abc", "BACKEND_PORT"},
-		{"puerto fuera de rango", "BACKEND_PORT", "70000", "BACKEND_PORT"},
-		{"entorno desconocido", "APP_ENV", "staging", "APP_ENV"},
-		{"nivel de log desconocido", "LOG_LEVEL", "trace", "LOG_LEVEL"},
-		{"usuario sin contraseña", "POSTGRES_USER", "solo_usuario", "POSTGRES_PASSWORD"},
-	} {
+		{
+			name: "puerto no es 8080",
+			mutate: func(t *testing.T) {
+				t.Setenv("API_PORT", "5121")
+			},
+			wantMsg: "API_PORT",
+		},
+		{
+			name: "puerto vacío",
+			mutate: func(t *testing.T) {
+				t.Setenv("API_PORT", "")
+				t.Setenv("BACKEND_PORT", "")
+			},
+			wantMsg: "API_PORT",
+		},
+		{
+			name: "API_ENV inválido",
+			mutate: func(t *testing.T) {
+				t.Setenv("API_ENV", "staging")
+			},
+			wantMsg: "API_ENV",
+		},
+		{
+			name: "DATABASE_URL vacía",
+			mutate: func(t *testing.T) {
+				t.Setenv("DATABASE_URL", "")
+				t.Setenv("POSTGRES_URI", "")
+			},
+			wantMsg: "DATABASE_URL",
+		},
+		{
+			name: "AUTH_JWKS_URL vacía",
+			mutate: func(t *testing.T) {
+				t.Setenv("AUTH_JWKS_URL", "")
+			},
+			wantMsg: "AUTH_JWKS_URL",
+		},
+		{
+			name: "FRONTEND_URL vacía",
+			mutate: func(t *testing.T) {
+				t.Setenv("FRONTEND_URL", "")
+			},
+			wantMsg: "FRONTEND_URL",
+		},
+		{
+			name: "TZ no es America/Santiago",
+			mutate: func(t *testing.T) {
+				t.Setenv("TZ", "UTC")
+			},
+			wantMsg: "TZ",
+		},
+		{
+			name: "LOG_LEVEL inválido",
+			mutate: func(t *testing.T) {
+				t.Setenv("LOG_LEVEL", "verbose")
+			},
+			wantMsg: "LOG_LEVEL",
+		},
+		{
+			name: "usuario de postgres sin contraseña",
+			mutate: func(t *testing.T) {
+				t.Setenv("POSTGRES_USER", "solo_usuario")
+				t.Setenv("POSTGRES_PASSWORD", "")
+			},
+			wantMsg: "POSTGRES_USER",
+		},
+	}
+
+	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Setenv("POSTGRES_PASSWORD", "")
-			t.Setenv(tc.key, tc.value)
+			setValidEnv(t)
+			tc.mutate(t)
 
 			_, err := Load()
 			if err == nil || !strings.Contains(err.Error(), tc.wantMsg) {
@@ -64,4 +142,3 @@ func TestLoadRejectsInvalidValues(t *testing.T) {
 		})
 	}
 }
-

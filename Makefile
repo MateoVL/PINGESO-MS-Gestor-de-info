@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 ENV_FILE ?= .env
 
-.PHONY: help env dev dev-d prod down down-prod logs logs-prod local-db local-back local-front sqlc migrate-up migrate-down oapi-codegen codegen clean test
+.PHONY: help env dev dev-d prod down down-prod logs logs-prod local-db local-back local-front sqlc generate migrate-up migrate-down oapi-codegen codegen clean test
 
 # ==============================================================================
 # Ayuda y Documentación
@@ -29,6 +29,8 @@ env: ## Crea el archivo .env a partir de .env.example si no existe
 # ==============================================================================
 sqlc: ## Genera el código de consultas SQL con sqlc v1.29.0
 	cd apps/api && go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.29.0 generate
+
+generate: sqlc ## Regenera internal/repository/ con sqlc v1.29.0 (AGENTS.md sección 5)
 
 migrate-up: env ## Ejecuta las migraciones de PostgreSQL con goose v3.24.1
 	cd apps/api && go run github.com/pressly/goose/v3/cmd/goose@v3.24.1 -dir db/migrations postgres "$${POSTGRES_URI:-postgres://127.0.0.1:5432/gestor_info_db?sslmode=disable}" up

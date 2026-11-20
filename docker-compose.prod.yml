@@ -9,6 +9,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-gestor_info_db}
       POSTGRES_USER: ${POSTGRES_USER:?Define POSTGRES_USER en .env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
+      TZ: America/Santiago
     volumes:
       - postgres_prod_data:/var/lib/postgresql/data
     healthcheck:
@@ -30,6 +31,7 @@ services:
     restart: "no"
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:?Define POSTGRES_USER}:${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-gestor_info_db}?sslmode=disable
+      TZ: America/Santiago
     depends_on:
       postgres:
         condition: service_healthy
@@ -46,14 +48,22 @@ services:
       - "127.0.0.1:${BACKEND_PORT:-5121}:8080"
     environment:
       APP_ENV: production
-      API_ENV: production
-      APP_NAME: ${APP_NAME:-MS Gestor de Información}
+      API_ENV: prod
+      API_PORT: "8080"
       BACKEND_PORT: 8080
+      APP_NAME: ${APP_NAME:-MS Gestor de Información}
+      DATABASE_URL: postgres://${POSTGRES_USER:?Define POSTGRES_USER}:${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-gestor_info_db}?sslmode=disable
+      POSTGRES_URI: postgres://${POSTGRES_USER:?Define POSTGRES_USER}:${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-gestor_info_db}?sslmode=disable
+      AUTH_JWKS_URL: ${AUTH_JWKS_URL:-http://localhost:5101/api/v1/auth/jwks}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5120}
+      TZ: America/Santiago
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5120,http://127.0.0.1:5120,http://localhost:3000,http://127.0.0.1:3000}
-      POSTGRES_URI: postgres://postgres:5432/${POSTGRES_DB:-gestor_info_db}?sslmode=disable
       POSTGRES_DB: ${POSTGRES_DB:-gestor_info_db}
       POSTGRES_USER: ${POSTGRES_USER:?Define POSTGRES_USER en .env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
+      DIGITALIZACION_URL: ${DIGITALIZACION_URL:-http://localhost:5151}
+      REPORTES_URL: ${REPORTES_URL:-http://localhost:5111}
+      IDENTIDAD_URL: ${IDENTIDAD_URL:-http://localhost:5101}
       MS_DIGITALIZACION_URL: ${MS_DIGITALIZACION_URL:-http://localhost:5151}
       MS_REPORTES_URL: ${MS_REPORTES_URL:-http://localhost:5111}
       LOG_LEVEL: ${LOG_LEVEL:-info}
