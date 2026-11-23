@@ -53,7 +53,7 @@ Las versiones de abajo son exactas, sin rangos. Subir una versión es un PR prop
 | `github.com/riverqueue/river` (+ `riverpgxv5`, `rivertype`)    | v0.40.0 | `go.mod`                                                           | Jobs, solo si el servicio los usa                   |
 | `github.com/golang-jwt/jwt/v5`                                 | v5.3.1  | `go.mod`                                                           | Emisión (servicio de identidad) y validación de JWT |
 | `github.com/MicahParks/keyfunc/v3`                             | v3.9.1  | `go.mod`                                                           | Lectura y caché del JWKS                            |
-| `golang.org/x/crypto`                                          | v0.54.0 | `go.mod`                                                           | Hash de contraseñas, solo servicio de identidad     |
+| `golang.org/x/crypto`                                          | v0.55.0 | `go.mod`                                                           | Hash de contraseñas, solo servicio de identidad     |
 | `github.com/oapi-codegen/oapi-codegen/v2`                      | v2.8.2  | `Makefile` (`go run ...@v2.8.2`)                                   | Cliente Go de servicios externos                    |
 | `github.com/testcontainers/testcontainers-go/modules/postgres` | v0.43.0 | `go.mod`                                                           | PostgreSQL real en pruebas                          |
 | `github.com/wneessen/go-mail`                                  | v0.8.1  | `go.mod`                                                           | SMTP, solo si el servicio envía correo              |
