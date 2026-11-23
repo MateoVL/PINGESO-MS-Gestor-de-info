@@ -70,6 +70,9 @@ jobs:
     env:
       TRIVY_IMAGE: ghcr.io/aquasecurity/trivy:0.76.2@sha256:8f6bb947dbc528902e11f2f5be52f7b519f6a39d5d148f41166f2040499768fb
       COMPOSE_PROJECT_NAME: pingeso-hito0
+      POSTGRES_USER: gestor_user
+      POSTGRES_PASSWORD: ci-gestor-password
+      POSTGRES_DB: gestor_info_db
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -82,7 +85,7 @@ jobs:
             "$TRIVY_IMAGE" fs --scanners vuln --include-dev-deps /src
       - name: Construir y verificar el entorno
         run: |
-          docker compose --env-file .env.example -f docker-compose.prod.yml up -d --build --wait --wait-timeout 120
+          docker compose -f docker-compose.prod.yml up -d --build --wait --wait-timeout 120
           curl --fail --silent --show-error --retry 20 --retry-delay 2 --retry-all-errors \
             http://127.0.0.1:5120/healthz | jq -e '.status == "ok"'
           curl --fail --silent --show-error --retry 20 --retry-delay 2 --retry-all-errors \
@@ -102,8 +105,8 @@ jobs:
           done
       - name: Registrar diagnóstico del entorno si falla
         if: failure()
-        run: docker compose --env-file .env.example -f docker-compose.prod.yml logs --no-color
+        run: docker compose -f docker-compose.prod.yml logs --no-color
       - name: Detener el entorno de integración
         if: always()
-        run: docker compose --env-file .env.example -f docker-compose.prod.yml down
+        run: docker compose -f docker-compose.prod.yml down
 
