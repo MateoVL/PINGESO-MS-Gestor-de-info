@@ -8,15 +8,15 @@ import (
 // Structs de request y response del contrato OpenAPI 3.1 (AGENTS.md sección 2: Contrato API-first).
 
 type RegistroEntrada struct {
-	Folio  string `json:"folio" maxLength:"254" doc:"Folio identificador del documento" example:"DOC-0001"`
-	Nombre string `json:"nombre" maxLength:"254" doc:"Nombre completo del titular" example:"Camila Soto"`
-	Correo string `json:"correo" maxLength:"254" doc:"Correo electrónico de contacto" example:"camila@example.com"`
+	Folio  string `json:"folio" doc:"Folio identificador del documento" example:"DOC-0001"`
+	Nombre string `json:"nombre" doc:"Nombre completo del titular" example:"Camila Soto"`
+	Correo string `json:"correo" doc:"Correo electrónico de contacto" example:"camila@example.com"`
 }
 
 type SolicitudLote struct {
-	Origen            string            `json:"origen" maxLength:"254" doc:"Sistema emisor del lote" example:"Extractor OCR"`
-	ReferenciaExterna string            `json:"referencia_externa" maxLength:"254" doc:"Identificador de correlación en el emisor" example:"lote-2026-001"`
-	Registros         []RegistroEntrada `json:"registros" minItems:"1" maxItems:"5000" doc:"Lista de registros a procesar"`
+	Origen            string            `json:"origen" doc:"Sistema emisor del lote" example:"Extractor OCR"`
+	ReferenciaExterna string            `json:"referencia_externa" doc:"Identificador de correlación en el emisor" example:"lote-2026-001"`
+	Registros         []RegistroEntrada `json:"registros" nullable:"false" doc:"Lista de registros a procesar"`
 }
 
 type LivenessStatus struct {
@@ -54,7 +54,7 @@ type ListBatchesOutput struct {
 }
 
 type GetByIDInput struct {
-	ID string `path:"id" format:"uuid" pattern:"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$" doc:"UUID del recurso" example:"550e8400-e29b-41d4-a716-446655440000"`
+	ID string `path:"id" format:"uuid" doc:"UUID del recurso" example:"550e8400-e29b-41d4-a716-446655440000"`
 }
 
 type GetBatchOutput struct {
@@ -68,8 +68,8 @@ type ListRejectionsOutput struct {
 type ListRecordsInput struct {
 	Pagina       int    `query:"pagina" default:"1" minimum:"1" doc:"Número de página (1-indexed)" example:"1"`
 	TamanoPagina int    `query:"tamano_pagina" default:"50" minimum:"1" maximum:"200" doc:"Cantidad de registros por página" example:"50"`
-	Folio        string `query:"folio" maxLength:"254" doc:"Filtro opcional por folio exacto (se normaliza a mayúsculas)" example:"DOC-0001"`
-	LoteID       string `query:"lote_id" format:"uuid" pattern:"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$" doc:"Filtro opcional por UUID de lote" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Folio        string `query:"folio" doc:"Filtro opcional por folio exacto (se normaliza a mayúsculas)" example:"DOC-0001"`
+	LoteID       string `query:"lote_id" format:"uuid" doc:"Filtro opcional por UUID de lote" example:"550e8400-e29b-41d4-a716-446655440000"`
 }
 
 type ListRecordsOutput struct {
@@ -83,7 +83,7 @@ type GetRecordOutput struct {
 type DirtyMocksInput struct {
 	Cantidad int    `query:"cantidad" default:"20" minimum:"1" maximum:"5000" doc:"Cantidad de registros simulados a generar" example:"20"`
 	Formato  string `query:"formato" default:"json" enum:"json,csv" doc:"Formato de salida (json o csv)" example:"json"`
-	Semilla  uint64 `query:"semilla" doc:"Semilla opcional para generación determinista" example:"7"`
+	Semilla  int    `query:"semilla" doc:"Semilla opcional para generación determinista" example:"7"`
 }
 
 type DirtyMocksOutput struct {

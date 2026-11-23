@@ -4,13 +4,13 @@ Base del microservicio **PT2 (Gestor de Información)** alineada con las reglas 
 
 ## Stack y estructura del repositorio (`AGENTS.md`)
 
-| Componente | Tecnología y Versión Exacta | Ubicación |
-|---|---|---|
-| **Backend** | Go `1.26.5` (`go 1.26.0` + `toolchain go1.26.5`), Huma `v2.34.1`, pgx `v5.10.0`, sqlc `v1.29.0`, goose `v3.24.1` | `apps/api/` |
-| **Frontend** | Node `22.22.0`, pnpm `10.13.1`, React `19.2.8`, TypeScript `6.0.3`, Vite `8.1.5`, Tailwind `4.3.3` | `apps/web/` |
-| **Base de datos** | PostgreSQL `17.11` | `docker-compose.yaml` |
-| **Contrato API-first** | OpenAPI 3.1.0 generado desde structs de Huma y commiteado | `contracts/openapi.yaml` |
-| **Modos de falla** | Documentación de resiliencia, idempotencia y timeouts | `docs/modos-de-falla.md` |
+| Componente             | Tecnología y Versión Exacta                                                                                      | Ubicación                |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| **Backend**            | Go `1.26.5` (`go 1.26.0` + `toolchain go1.26.5`), Huma `v2.34.1`, pgx `v5.10.0`, sqlc `v1.29.0`, goose `v3.24.1` | `apps/api/`              |
+| **Frontend**           | Node `22.22.0`, pnpm `10.13.1`, React `19.2.8`, TypeScript `6.0.3`, Vite `8.1.5`, Tailwind `4.3.3`               | `apps/web/`              |
+| **Base de datos**      | PostgreSQL `17.11`                                                                                               | `docker-compose.yaml`    |
+| **Contrato API-first** | OpenAPI 3.1.0 generado desde structs de Huma y commiteado                                                        | `contracts/openapi.yaml` |
+| **Modos de falla**     | Documentación de resiliencia, idempotencia y timeouts                                                            | `docs/modos-de-falla.md` |
 
 ### Estructura de carpetas
 
@@ -63,3 +63,21 @@ docker compose up --build
 - `make codegen`: Regenera `contracts/openapi.yaml` desde los structs de Huma y los tipos TypeScript con `openapi-typescript`.
 - `make sqlc`: Ejecuta `sqlc@v1.29.0` sobre `apps/api/db/queries`.
 - `make test`: Ejecuta pruebas y cobertura en `apps/api` y `apps/web`.
+
+## Escáneres obligatorios: SonarQube y Trivy (`AGENTS.md` sección 7)
+
+- **Pipeline de CI (GitHub Actions)**: [https://github.com/MateoVL/PINGESO-MS-Gestor-de-info/actions/workflows/ci.yml](https://github.com/MateoVL/PINGESO-MS-Gestor-de-info/actions/workflows/ci.yml)
+- **Clave del proyecto SonarQube (`sonar.projectKey`)**: `pingeso-grupo-2-pipeline-info` (`sonar-project.properties`)
+- **Ejecución local de SonarQube**:
+  ```bash
+  pnpm test:coverage && pnpm test:e2e:api
+  sonar-scanner -Dsonar.host.url="$SONAR_HOST_URL" -Dsonar.token="$SONAR_TOKEN"
+  ```
+- **Ejecución local de Trivy (`v0.76.1`)**:
+  ```bash
+  trivy fs --scanners vuln,misconfig,secret --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 .
+  docker build -t api:local -f apps/api/Dockerfile .
+  trivy image --scanners vuln,secret --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 api:local
+  docker build -t web:local -f apps/web/Dockerfile .
+  trivy image --scanners vuln,secret --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 web:local
+  ```

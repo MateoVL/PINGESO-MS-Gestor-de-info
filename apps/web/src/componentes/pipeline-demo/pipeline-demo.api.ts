@@ -22,7 +22,18 @@ export interface BatchProcessSummary {
   rejected: RejectedRecord[]
 }
 
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+function isValidEmail(email: string): boolean {
+  if (!email || /\s/.test(email)) {
+    return false
+  }
+  const atIndex = email.indexOf('@')
+  if (atIndex <= 0 || atIndex !== email.lastIndexOf('@')) {
+    return false
+  }
+  const domain = email.slice(atIndex + 1)
+  const dotIndex = domain.indexOf('.')
+  return dotIndex > 0 && !domain.startsWith('.') && !domain.endsWith('.')
+}
 
 function textValue(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
@@ -48,7 +59,7 @@ export function evaluateBatchRecords(records: unknown[]): BatchProcessSummary {
 
     if (!folio) issues.push('Falta el folio')
     if (!nombre) issues.push('Falta el nombre')
-    if (!emailPattern.test(correo)) issues.push('Correo inválido')
+    if (!isValidEmail(correo)) issues.push('Correo inválido')
     if (seen.has(folio)) issues.push('Folio duplicado')
 
     if (issues.length > 0) {

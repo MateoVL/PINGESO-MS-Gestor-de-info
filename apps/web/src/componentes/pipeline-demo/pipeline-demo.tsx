@@ -9,7 +9,8 @@ export interface PipelineDemoProps {
 
 // Microcomponente autocontenido: vista pura sin lógica de negocio ni dependencia de otros microcomponentes
 export function PipelineDemo({ apiBaseUrl, usuario, permisos }: PipelineDemoProps) {
-  const { input, result, error, handleInputChange, loadExample, runBatch } = usePipelineDemo()
+  const { input, result, error, handleInputChange, loadExample, runBatch } =
+    usePipelineDemo(apiBaseUrl)
   const canOperate =
     !permisos ||
     permisos.length === 0 ||

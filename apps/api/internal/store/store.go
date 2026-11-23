@@ -38,7 +38,7 @@ type SolicitudLote struct {
 
 // Lote resume un lote procesado
 type Lote struct {
-	ID                string    `json:"id" doc:"UUID del lote" example:"550e8400-e29b-41d4-a716-446655440000"`
+	ID                string    `json:"id" format:"uuid" doc:"UUID del lote" example:"550e8400-e29b-41d4-a716-446655440000"`
 	Origen            string    `json:"origen" doc:"Sistema emisor" example:"Extractor OCR"`
 	ReferenciaExterna string    `json:"referencia_externa" doc:"Referencia externa" example:"lote-2026-001"`
 	Recibidos         int       `json:"recibidos" doc:"Total de registros recibidos" example:"20"`
@@ -52,8 +52,8 @@ type Lote struct {
 
 // Registro limpio y validado
 type Registro struct {
-	ID       string    `json:"id" doc:"UUID del registro" example:"660e8400-e29b-41d4-a716-446655440000"`
-	LoteID   string    `json:"lote_id" doc:"UUID del lote al que pertenece" example:"550e8400-e29b-41d4-a716-446655440000"`
+	ID       string    `json:"id" format:"uuid" doc:"UUID del registro" example:"660e8400-e29b-41d4-a716-446655440000"`
+	LoteID   string    `json:"lote_id" format:"uuid" doc:"UUID del lote al que pertenece" example:"550e8400-e29b-41d4-a716-446655440000"`
 	Posicion int       `json:"posicion" doc:"Posición 1-indexed dentro del lote original" example:"1"`
 	Folio    string    `json:"folio" doc:"Folio normalizado en mayúsculas" example:"DOC-0001"`
 	Nombre   string    `json:"nombre" doc:"Nombre normalizado" example:"Camila Soto"`
@@ -66,13 +66,13 @@ type Rechazo struct {
 	LoteID   string   `json:"-"`
 	Posicion int      `json:"posicion" doc:"Posición 1-indexed dentro del lote" example:"2"`
 	Folio    string   `json:"folio" doc:"Folio normalizado o vacío" example:"DOC-0001"`
-	Motivos  []string `json:"motivos" doc:"Códigos de motivo de rechazo" example:"[\"folio_duplicado\"]"`
+	Motivos  []string `json:"motivos" nullable:"false" doc:"Códigos de motivo de rechazo" example:"[\"folio_duplicado\"]"`
 }
 
 // LoteDetalle incluye el resumen del lote con sus rechazos
 type LoteDetalle struct {
 	Lote
-	Rechazos []Rechazo `json:"rechazos" doc:"Detalle de los registros rechazados"`
+	Rechazos []Rechazo `json:"rechazos" nullable:"false" doc:"Detalle de los registros rechazados"`
 }
 
 // InfoPagina describe la página devuelta en un listado
@@ -84,16 +84,16 @@ type InfoPagina struct {
 
 type ListaLotes struct {
 	InfoPagina
-	Elementos []Lote `json:"elementos" doc:"Lotes de la página"`
+	Elementos []Lote `json:"elementos" nullable:"false" doc:"Lotes de la página"`
 }
 
 type ListaRegistros struct {
 	InfoPagina
-	Elementos []Registro `json:"elementos" doc:"Registros aceptados de la página"`
+	Elementos []Registro `json:"elementos" nullable:"false" doc:"Registros aceptados de la página"`
 }
 
 type ListaRechazos struct {
-	Elementos []Rechazo `json:"elementos" doc:"Rechazos del lote"`
+	Elementos []Rechazo `json:"elementos" nullable:"false" doc:"Rechazos del lote"`
 }
 
 type Paginacion struct {

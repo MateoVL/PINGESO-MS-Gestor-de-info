@@ -11,6 +11,9 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -241,5 +244,16 @@ func TestE2EBatchLifecycle(t *testing.T) {
 		if res.StatusCode != errCase.want {
 			t.Fatalf("%s %s: código %d, se esperaba %d", errCase.method, errCase.path, res.StatusCode, errCase.want)
 		}
+	}
+
+	// 8. Ejecutar el binario compilado con `go build -cover` (.cache/api-cover) con GOCOVERDIR
+	// según AGENTS.md sección 6 y 7 para recolectar su cobertura de proceso real.
+	coverBin := filepath.Join("..", ".cache", "api-cover")
+	if _, err := os.Stat(coverBin); err == nil {
+		covDir := filepath.Join("..", ".cache", "covdata")
+		_ = os.MkdirAll(covDir, 0o755)
+		cmd := exec.Command(coverBin, "-healthcheck")
+		cmd.Env = append(os.Environ(), "GOCOVERDIR="+covDir)
+		_ = cmd.Run()
 	}
 }
