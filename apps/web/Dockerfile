@@ -9,7 +9,7 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
 COPY apps/web/ ./apps/web/
 RUN pnpm --filter @pingeso/ms-gestor-de-info-ui build
 
-FROM --platform=$BUILDPLATFORM golang:1.26.5-alpine3.23@sha256:622e56dbc11a8cfe87cafa2331e9a201877271cbff918af53d3be315f3da88cc AS build-server
+FROM --platform=$BUILDPLATFORM golang:1.26.11-alpine3.23@sha256:23f198931d4bd83b4f5a613bd75656257ae8bf832dcbc2db80e1050b5219ca2a AS build-server
 WORKDIR /src
 COPY apps/web/server.go ./server.go
 ARG TARGETOS TARGETARCH VERSION=dev

@@ -43,20 +43,20 @@ Las versiones de abajo son exactas, sin rangos. Subir una versión es un PR prop
 
 ### Backend (Go)
 
-| Componente                                                     | Versión | Dónde se fija                                                     | Uso                                                 |
-| -------------------------------------------------------------- | ------- | ----------------------------------------------------------------- | --------------------------------------------------- |
-| Go (toolchain)                                                 | 1.26.5  | `go.mod`: `go 1.26.0` + `toolchain go1.26.5` y la imagen de build | Todos                                               |
-| `github.com/danielgtaylor/huma/v2`                             | v2.34.1 | `go.mod`                                                          | HTTP + OpenAPI 3.1                                  |
-| `github.com/jackc/pgx/v5`                                      | v5.10.0 | `go.mod`                                                          | Driver PostgreSQL                                   |
-| `github.com/sqlc-dev/sqlc`                                     | v1.29.0 | `Makefile` (`go run ...@v1.29.0`)                                 | Generación de queries                               |
-| `github.com/pressly/goose/v3`                                  | v3.24.1 | `go.mod`, `Makefile`, `Dockerfile.migrate`                        | Migraciones                                         |
-| `github.com/riverqueue/river` (+ `riverpgxv5`, `rivertype`)    | v0.40.0 | `go.mod`                                                          | Jobs, solo si el servicio los usa                   |
-| `github.com/golang-jwt/jwt/v5`                                 | v5.3.1  | `go.mod`                                                          | Emisión (servicio de identidad) y validación de JWT |
-| `github.com/MicahParks/keyfunc/v3`                             | v3.9.1  | `go.mod`                                                          | Lectura y caché del JWKS                            |
-| `golang.org/x/crypto`                                          | v0.54.0 | `go.mod`                                                          | Hash de contraseñas, solo servicio de identidad     |
-| `github.com/oapi-codegen/oapi-codegen/v2`                      | v2.8.2  | `Makefile` (`go run ...@v2.8.2`)                                  | Cliente Go de servicios externos                    |
-| `github.com/testcontainers/testcontainers-go/modules/postgres` | v0.43.0 | `go.mod`                                                          | PostgreSQL real en pruebas                          |
-| `github.com/wneessen/go-mail`                                  | v0.8.1  | `go.mod`                                                          | SMTP, solo si el servicio envía correo              |
+| Componente                                                     | Versión | Dónde se fija                                                      | Uso                                                 |
+| -------------------------------------------------------------- | ------- | ------------------------------------------------------------------ | --------------------------------------------------- |
+| Go (toolchain)                                                 | 1.26.11 | `go.mod`: `go 1.26.0` + `toolchain go1.26.11` y la imagen de build | Todos                                               |
+| `github.com/danielgtaylor/huma/v2`                             | v2.34.1 | `go.mod`                                                           | HTTP + OpenAPI 3.1                                  |
+| `github.com/jackc/pgx/v5`                                      | v5.10.0 | `go.mod`                                                           | Driver PostgreSQL                                   |
+| `github.com/sqlc-dev/sqlc`                                     | v1.29.0 | `Makefile` (`go run ...@v1.29.0`)                                  | Generación de queries                               |
+| `github.com/pressly/goose/v3`                                  | v3.24.1 | `go.mod`, `Makefile`, `Dockerfile.migrate`                         | Migraciones                                         |
+| `github.com/riverqueue/river` (+ `riverpgxv5`, `rivertype`)    | v0.40.0 | `go.mod`                                                           | Jobs, solo si el servicio los usa                   |
+| `github.com/golang-jwt/jwt/v5`                                 | v5.3.1  | `go.mod`                                                           | Emisión (servicio de identidad) y validación de JWT |
+| `github.com/MicahParks/keyfunc/v3`                             | v3.9.1  | `go.mod`                                                           | Lectura y caché del JWKS                            |
+| `golang.org/x/crypto`                                          | v0.54.0 | `go.mod`                                                           | Hash de contraseñas, solo servicio de identidad     |
+| `github.com/oapi-codegen/oapi-codegen/v2`                      | v2.8.2  | `Makefile` (`go run ...@v2.8.2`)                                   | Cliente Go de servicios externos                    |
+| `github.com/testcontainers/testcontainers-go/modules/postgres` | v0.43.0 | `go.mod`                                                           | PostgreSQL real en pruebas                          |
+| `github.com/wneessen/go-mail`                                  | v0.8.1  | `go.mod`                                                           | SMTP, solo si el servicio envía correo              |
 
 ### Frontend
 
@@ -86,7 +86,7 @@ Las versiones de abajo son exactas, sin rangos. Subir una versión es un PR prop
 
 | Imagen                            | Tag                       | Digest                                                                    |
 | --------------------------------- | ------------------------- | ------------------------------------------------------------------------- |
-| golang (build)                    | `1.26.5-alpine3.23`       | `sha256:622e56dbc11a8cfe87cafa2331e9a201877271cbff918af53d3be315f3da88cc` |
+| golang (build)                    | `1.26.11-alpine3.23`      | `sha256:23f198931d4bd83b4f5a613bd75656257ae8bf832dcbc2db80e1050b5219ca2a` |
 | node (build web)                  | `22.22.0-alpine3.23`      | `sha256:e4bf2a82ad0a4037d28035ae71529873c069b13eb0455466ae0bc13363826e34` |
 | distroless (runtime api y web)    | `static-debian13:nonroot` | `sha256:f7f8f729987ad0fdf6b05eeeae94b26e6a0f613bdf46feea7fc40f7bd72953e6` |
 | alpine (runtime migrate)          | `3.23.7`                  | `sha256:ff7f0c727dd796aa36787bfcd9a64bf35a6ce72a73451b3359fde849b6703d63` |
@@ -151,7 +151,7 @@ Cada servicio publica dos imágenes, `api` y `migrate`, y su paquete de microcom
 
 | Regla                            | Cómo se cumple                                                                                  |
 | -------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Base fijada por versión y digest | `golang:1.26.5-alpine3.23@sha256:…`, nunca `latest`                                             |
+| Base fijada por versión y digest | `golang:1.26.11-alpine3.23@sha256:…`, nunca `latest`                                            |
 | Runtime mínimo                   | `gcr.io/distroless/static-debian13:nonroot` para api y web                                      |
 | Usuario no root                  | `USER nonroot:nonroot`, archivos con `--chown`                                                  |
 | Binario reproducible             | `CGO_ENABLED=0`, `-trimpath`, `-buildvcs=false`, `-ldflags="-s -w -X main.version=$VERSION"`    |
@@ -165,7 +165,7 @@ Cada servicio publica dos imágenes, `api` y `migrate`, y su paquete de microcom
 
 ```dockerfile
 # syntax=docker/dockerfile:1.7
-FROM --platform=$BUILDPLATFORM golang:1.26.5-alpine3.23@sha256:622e56dbc11a8cfe87cafa2331e9a201877271cbff918af53d3be315f3da88cc AS build
+FROM --platform=$BUILDPLATFORM golang:1.26.11-alpine3.23@sha256:23f198931d4bd83b4f5a613bd75656257ae8bf832dcbc2db80e1050b5219ca2a AS build
 WORKDIR /src
 COPY apps/api/go.mod apps/api/go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod go mod download

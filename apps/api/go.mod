@@ -2,7 +2,7 @@ module github.com/mateo/ms-gestor-de-info/apps/api
 
 go 1.26.0
 
-toolchain go1.26.5
+toolchain go1.26.11
 
 require (
 	github.com/MicahParks/keyfunc/v3 v3.9.1

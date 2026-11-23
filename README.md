@@ -4,13 +4,13 @@ Base del microservicio **PT2 (Gestor de Información)** alineada con las reglas 
 
 ## Stack y estructura del repositorio (`AGENTS.md`)
 
-| Componente             | Tecnología y Versión Exacta                                                                                      | Ubicación                |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------ |
-| **Backend**            | Go `1.26.5` (`go 1.26.0` + `toolchain go1.26.5`), Huma `v2.34.1`, pgx `v5.10.0`, sqlc `v1.29.0`, goose `v3.24.1` | `apps/api/`              |
-| **Frontend**           | Node `22.22.0`, pnpm `10.13.1`, React `19.2.8`, TypeScript `6.0.3`, Vite `8.1.5`, Tailwind `4.3.3`               | `apps/web/`              |
-| **Base de datos**      | PostgreSQL `17.11`                                                                                               | `docker-compose.yaml`    |
-| **Contrato API-first** | OpenAPI 3.1.0 generado desde structs de Huma y commiteado                                                        | `contracts/openapi.yaml` |
-| **Modos de falla**     | Documentación de resiliencia, idempotencia y timeouts                                                            | `docs/modos-de-falla.md` |
+| Componente             | Tecnología y Versión Exacta                                                                                        | Ubicación                |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------ |
+| **Backend**            | Go `1.26.11` (`go 1.26.0` + `toolchain go1.26.11`), Huma `v2.34.1`, pgx `v5.10.0`, sqlc `v1.29.0`, goose `v3.24.1` | `apps/api/`              |
+| **Frontend**           | Node `22.22.0`, pnpm `10.13.1`, React `19.2.8`, TypeScript `6.0.3`, Vite `8.1.5`, Tailwind `4.3.3`                 | `apps/web/`              |
+| **Base de datos**      | PostgreSQL `17.11`                                                                                                 | `docker-compose.yaml`    |
+| **Contrato API-first** | OpenAPI 3.1.0 generado desde structs de Huma y commiteado                                                          | `contracts/openapi.yaml` |
+| **Modos de falla**     | Documentación de resiliencia, idempotencia y timeouts                                                              | `docs/modos-de-falla.md` |
 
 ### Estructura de carpetas
 
@@ -27,7 +27,7 @@ Base del microservicio **PT2 (Gestor de Información)** alineada con las reglas 
 │   │   ├── db/migrations/      # migraciones goose
 │   │   ├── db/queries/         # consultas SQL para sqlc
 │   │   ├── e2e/                # pruebas e2e + testdata/*.golden.md
-│   │   ├── Dockerfile          # golang:1.26.5-alpine3.23 -> distroless static-debian13:nonroot
+│   │   ├── Dockerfile          # golang:1.26.11-alpine3.23 -> distroless static-debian13:nonroot
 │   │   └── Dockerfile.migrate  # goose v3.24.1 sobre alpine:3.23.7
 │   └── web/
 │       ├── src/componentes/    # microcomponentes React (<nombre>.tsx, <nombre>.api.ts, use-<nombre>.ts)
@@ -67,7 +67,9 @@ docker compose up --build
 ## Escáneres obligatorios: SonarQube y Trivy (`AGENTS.md` sección 7)
 
 - **Pipeline de CI (GitHub Actions)**: [https://github.com/MateoVL/PINGESO-MS-Gestor-de-info/actions/workflows/ci.yml](https://github.com/MateoVL/PINGESO-MS-Gestor-de-info/actions/workflows/ci.yml)
-- **Clave del proyecto SonarQube (`sonar.projectKey`)**: `pingeso-grupo-2-pipeline-info` (`sonar-project.properties`)
+- **Organización SonarQube Cloud (`sonar.organization`)**: `pingeso-gestor-info` (`sonar-project.properties`)
+- **Clave del proyecto SonarQube (`sonar.projectKey`)**: `MateoVL_PINGESO-MS-Gestor-de-info` (`sonar-project.properties`)
+- **Requisito en SonarQube Cloud**: En **Administration → Analysis Method**, mantener **Automatic Analysis** desactivado para permitir el análisis desde GitHub Actions (`CI-based Analysis`) con lectura de cobertura (`coverage.out` y `apps/web/coverage/lcov.info`).
 - **Ejecución local de SonarQube**:
   ```bash
   pnpm test:coverage && pnpm test:e2e:api
@@ -81,3 +83,13 @@ docker compose up --build
   docker build -t web:local -f apps/web/Dockerfile .
   trivy image --scanners vuln,secret --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 web:local
   ```
+
+### Registro de actualizaciones de seguridad del stack (`AGENTS.md` secciones 3 y 7)
+
+De acuerdo con la regla de gestión de vulnerabilidades con corrección disponible (`AGENTS.md` sección 7.5), se registran las siguientes actualizaciones verificadas por `govulncheck` y `trivy`:
+
+| Componente / Módulo                 | Versión anterior                         | Versión actualizada                       | Motivo / CVEs remediados                                                                                                                                                                                                                                                                                                                     |
+| ----------------------------------- | ---------------------------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Go (toolchain)**                  | `1.26.5`                                 | `1.26.11`                                 | Remediación de 17 vulnerabilidades en la librería estándar (`GO-2026-6859`, `GO-2026-6809`, `GO-2026-6617`, `GO-2026-6613`, `GO-2026-6612`, `GO-2026-6611`, `GO-2026-6610`, `GO-2026-6608`, `GO-2026-6607`, `GO-2026-6605`, `GO-2026-6603`, `GO-2026-6218`, `GO-2026-6090`, `GO-2026-6089`, `GO-2026-6088`, `GO-2026-5972`, `GO-2026-5026`). |
+| **`golang` (imagen base de build)** | `1.26.5-alpine3.23` (`sha256:622e56db…`) | `1.26.11-alpine3.23` (`sha256:23f19893…`) | Alineación de la imagen multi-arquitectura de compilación (`apps/api/Dockerfile`, `apps/api/Dockerfile.migrate`, `apps/web/Dockerfile`) con Go `1.26.11` para eliminar CVEs del binario compilado en el escaneo `trivy image`.                                                                                                               |
+| **`golang.org/x/text`**             | `v0.37.0`                                | `v0.42.0`                                 | Remediación de `GO-2026-6629` y `GO-2026-5970` en `x/text/secure/precis` y `x/text/unicode/norm` (alcanzables transitivamente desde `pgxpool`).                                                                                                                                                                                              |
