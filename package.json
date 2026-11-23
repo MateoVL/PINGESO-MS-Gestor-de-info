@@ -1,0 +1,25 @@
+{
+  "name": "ms-gestor-de-info",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.13.1",
+  "engines": {
+    "node": "22.22.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @pingeso/ms-gestor-de-info-ui dev",
+    "build": "pnpm --filter @pingeso/ms-gestor-de-info-ui build",
+    "test": "pnpm --filter @pingeso/ms-gestor-de-info-ui test",
+    "test:coverage": "pnpm --filter @pingeso/ms-gestor-de-info-ui test:coverage",
+    "lint": "oxlint apps/web/src",
+    "format:check": "prettier --check \"apps/web/src/**/*.{ts,tsx,css}\"",
+    "codegen": "cd apps/api && go run ./cmd/openapi > ../../contracts/openapi.yaml && cd ../web && pnpm openapi-typescript ../../contracts/openapi.yaml -o src/types/openapi.d.ts"
+  },
+  "devDependencies": {
+    "lefthook": "2.1.10",
+    "oxlint": "1.75.0",
+    "prettier": "3.9.6",
+    "prettier-plugin-tailwindcss": "0.8.1"
+  }
+}
+

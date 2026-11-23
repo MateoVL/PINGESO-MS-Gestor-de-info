@@ -1,0 +1,112 @@
+name: CI · Calidad y seguridad
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  tests:
+    name: Pruebas, Contratos y SonarQube
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        with:
+          go-version: '1.26.5'
+          cache-dependency-path: apps/api/go.sum
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version-file: '.nvmrc'
+      - name: Activar pnpm 10.13.1
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.13.1 --activate
+      - name: Verificar dependencias y pruebas de Go
+        working-directory: apps/api
+        run: |
+          go mod verify
+          go test -coverpkg=./... -coverprofile=coverage.out ./...
+      - name: Instalar dependencias con lockfile estricto, lint, pruebas y build de React
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm lint
+          pnpm test:coverage
+          pnpm build
+      - name: Comprobar la configuración de SonarQube
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          if [[ -z "$SONAR_HOST_URL" || -z "$SONAR_TOKEN" ]]; then
+            echo '::error::Configura la variable SONAR_HOST_URL y el secreto SONAR_TOKEN en GitHub Actions.'
+            exit 1
+          fi
+      - name: Analizar Go y React con SonarQube
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: SonarSource/sonarqube-scan-action@e805d875275f728fac1885b413934be6d7c63f65 # v8.4.1
+        env:
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  security:
+    name: Integración y Trivy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      TRIVY_IMAGE: ghcr.io/aquasecurity/trivy:0.76.2@sha256:8f6bb947dbc528902e11f2f5be52f7b519f6a39d5d148f41166f2040499768fb
+      COMPOSE_PROJECT_NAME: pingeso-hito0
+      POSTGRES_USER: gestor_user
+      POSTGRES_PASSWORD: ci-gestor-password
+      POSTGRES_DB: gestor_info_db
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Escanear dependencias con Trivy
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/src:ro" \
+            -v "$RUNNER_TEMP/trivy-cache:/root/.cache/trivy" \
+            "$TRIVY_IMAGE" fs --scanners vuln --include-dev-deps /src
+      - name: Construir y verificar el entorno
+        run: |
+          docker compose -f docker-compose.prod.yml up -d --build --wait --wait-timeout 120
+          curl --fail --silent --show-error --retry 20 --retry-delay 2 --retry-all-errors \
+            http://127.0.0.1:5120/healthz | jq -e '.status == "ok"'
+          curl --fail --silent --show-error --retry 20 --retry-delay 2 --retry-all-errors \
+            http://127.0.0.1:5121/healthz | jq -e '.status == "ok"'
+          curl --fail --silent --show-error --retry 20 --retry-delay 2 --retry-all-errors \
+            http://127.0.0.1:5121/readyz | jq -e '.status == "healthy" and .database.engine == "PostgreSQL" and .database.connected'
+          curl --fail --silent --show-error --retry 20 --retry-delay 2 --retry-all-errors \
+            http://127.0.0.1:5120/api/health | jq -e '.status == "healthy" and .database.engine == "PostgreSQL" and .database.connected'
+      - name: Escanear imágenes de backend y frontend con Trivy
+        run: |
+          for service in backend frontend; do
+            docker save --output "$RUNNER_TEMP/$service.tar" "$COMPOSE_PROJECT_NAME-$service"
+            docker run --rm \
+              -v "$RUNNER_TEMP/trivy-cache:/root/.cache/trivy" \
+              -v "$RUNNER_TEMP/$service.tar:/image.tar:ro" \
+              "$TRIVY_IMAGE" image --scanners vuln --input /image.tar
+          done
+      - name: Registrar diagnóstico del entorno si falla
+        if: failure()
+        run: docker compose -f docker-compose.prod.yml logs --no-color
+      - name: Detener el entorno de integración
+        if: always()
+        run: docker compose -f docker-compose.prod.yml down
+

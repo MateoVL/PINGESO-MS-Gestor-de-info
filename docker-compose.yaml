@@ -1,0 +1,140 @@
+name: ms-gestor-de-info
+
+services:
+  postgres:
+    image: postgres:17.11
+    container_name: gestor_info_postgres_dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-gestor_info_db}
+      POSTGRES_USER: ${POSTGRES_USER:-gestor_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev-gestor-password}
+      TZ: America/Santiago
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
+      interval: 4s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    networks:
+      - gestor_net
+
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile.migrate
+    container_name: gestor_info_migrate_dev
+    restart: "no"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-gestor_user}:${POSTGRES_PASSWORD:-dev-gestor-password}@postgres:5432/${POSTGRES_DB:-gestor_info_db}?sslmode=disable}
+      TZ: America/Santiago
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - gestor_net
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: gestor_info_backend_dev
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-5121}:8080"
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      API_ENV: ${API_ENV:-dev}
+      API_PORT: "8080"
+      BACKEND_PORT: 8080
+      APP_NAME: ${APP_NAME:-MS Gestor de Información}
+      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-gestor_user}:${POSTGRES_PASSWORD:-dev-gestor-password}@postgres:5432/${POSTGRES_DB:-gestor_info_db}?sslmode=disable}
+      POSTGRES_URI: ${DATABASE_URL:-postgres://${POSTGRES_USER:-gestor_user}:${POSTGRES_PASSWORD:-dev-gestor-password}@postgres:5432/${POSTGRES_DB:-gestor_info_db}?sslmode=disable}
+      AUTH_JWKS_URL: ${AUTH_JWKS_URL:-http://localhost:5101/api/v1/auth/jwks}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5120}
+      TZ: America/Santiago
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5120,http://127.0.0.1:5120,http://localhost:3000,http://127.0.0.1:3000}
+      POSTGRES_DB: ${POSTGRES_DB:-gestor_info_db}
+      POSTGRES_USER: ${POSTGRES_USER:-gestor_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev-gestor-password}
+      DIGITALIZACION_URL: ${DIGITALIZACION_URL:-http://localhost:5151}
+      REPORTES_URL: ${REPORTES_URL:-http://localhost:5111}
+      IDENTIDAD_URL: ${IDENTIDAD_URL:-http://localhost:5101}
+      MS_DIGITALIZACION_URL: ${MS_DIGITALIZACION_URL:-http://localhost:5151}
+      MS_REPORTES_URL: ${MS_REPORTES_URL:-http://localhost:5111}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      SERVICE_ROLE: ${SERVICE_ROLE:-}
+      SERVICE_DEPENDS_ON: ${SERVICE_DEPENDS_ON:-}
+      SERVICE_CONSUMERS: ${SERVICE_CONSUMERS:-}
+      SERVICE_CAPABILITIES: ${SERVICE_CAPABILITIES:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - gestor_net
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: gestor_info_frontend_dev
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-5120}:8080"
+    environment:
+      PORT: "8080"
+      BACKEND_URL: http://backend:8080
+    depends_on:
+      - backend
+    networks:
+      - gestor_net
+
+  seed:
+    image: alpine:3.23.7
+    container_name: gestor_info_seed_dev
+    profiles: ["dev"]
+    restart: "no"
+    volumes:
+      - ./apps/api/internal/api/lote-sucio.json:/seed/lote-sucio.json:ro
+    command:
+      - sh
+      - -c
+      - >-
+        for i in 1 2 3 4 5 6 7 8 9 10; do
+          wget -qO- http://backend:8080/readyz >/dev/null 2>&1 && break;
+          sleep 1;
+        done &&
+        wget -qO-
+        --header="Content-Type: application/json"
+        --header="Idempotency-Key: lote-demo"
+        --post-file=/seed/lote-sucio.json
+        http://backend:8080/api/v1/lotes
+    depends_on:
+      - backend
+    networks:
+      - gestor_net
+
+  mailpit:
+    image: axllent/mailpit:v1.31.3
+    container_name: gestor_info_mailpit_dev
+    profiles: ["dev"]
+    ports:
+      - "127.0.0.1:8025:8025"
+      - "127.0.0.1:1025:1025"
+    networks:
+      - gestor_net
+
+volumes:
+  postgres_dev_data:
+
+networks:
+  gestor_net:
+    driver: bridge

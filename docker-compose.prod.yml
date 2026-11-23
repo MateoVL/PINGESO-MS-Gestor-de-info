@@ -1,12 +1,15 @@
+name: ms-gestor-de-info
+
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:17.11
     container_name: gestor_info_postgres_prod
     restart: always
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-gestor_info_db}
       POSTGRES_USER: ${POSTGRES_USER:?Define POSTGRES_USER en .env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
+      TZ: America/Santiago
     volumes:
       - postgres_prod_data:/var/lib/postgresql/data
     healthcheck:
@@ -20,27 +23,50 @@ services:
     networks:
       - gestor_net_prod
 
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile.migrate
+    container_name: gestor_info_migrate_prod
+    restart: "no"
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:?Define POSTGRES_USER}:${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-gestor_info_db}?sslmode=disable
+      TZ: America/Santiago
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - gestor_net_prod
+
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/api/Dockerfile
     container_name: gestor_info_backend_prod
     restart: always
     ports:
-      - "${BACKEND_PORT:-8080}:8080"
+      - "127.0.0.1:${BACKEND_PORT:-5121}:8080"
     environment:
       APP_ENV: production
-      APP_NAME: ${APP_NAME:-MS Gestor de Información}
+      API_ENV: prod
+      API_PORT: "8080"
       BACKEND_PORT: 8080
-      GIN_MODE: release
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
-      POSTGRES_URI: postgres://postgres:5432/${POSTGRES_DB:-gestor_info_db}?sslmode=disable
+      APP_NAME: ${APP_NAME:-MS Gestor de Información}
+      DATABASE_URL: postgres://${POSTGRES_USER:?Define POSTGRES_USER}:${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-gestor_info_db}?sslmode=disable
+      POSTGRES_URI: postgres://${POSTGRES_USER:?Define POSTGRES_USER}:${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-gestor_info_db}?sslmode=disable
+      AUTH_JWKS_URL: ${AUTH_JWKS_URL:-http://localhost:5101/api/v1/auth/jwks}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5120}
+      TZ: America/Santiago
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5120,http://127.0.0.1:5120,http://localhost:3000,http://127.0.0.1:3000}
       POSTGRES_DB: ${POSTGRES_DB:-gestor_info_db}
       POSTGRES_USER: ${POSTGRES_USER:?Define POSTGRES_USER en .env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
-      MS_DIGITALIZACION_URL: ${MS_DIGITALIZACION_URL:-http://localhost:8081}
-      MS_REPORTES_URL: ${MS_REPORTES_URL:-http://localhost:8082}
-      LOG_LEVEL: ${LOG_LEVEL:-}
+      DIGITALIZACION_URL: ${DIGITALIZACION_URL:-http://localhost:5151}
+      REPORTES_URL: ${REPORTES_URL:-http://localhost:5111}
+      IDENTIDAD_URL: ${IDENTIDAD_URL:-http://localhost:5101}
+      MS_DIGITALIZACION_URL: ${MS_DIGITALIZACION_URL:-http://localhost:5151}
+      MS_REPORTES_URL: ${MS_REPORTES_URL:-http://localhost:5111}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
       SERVICE_ROLE: ${SERVICE_ROLE:-}
       SERVICE_DEPENDS_ON: ${SERVICE_DEPENDS_ON:-}
       SERVICE_CONSUMERS: ${SERVICE_CONSUMERS:-}
@@ -48,19 +74,22 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     networks:
       - gestor_net_prod
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+      context: .
+      dockerfile: apps/web/Dockerfile
     container_name: gestor_info_frontend_prod
     restart: always
+    environment:
+      PORT: "8080"
+      BACKEND_URL: "http://backend:8080"
     ports:
-      - "${FRONTEND_PORT:-3000}:80"
+      - "127.0.0.1:${FRONTEND_PORT:-5120}:8080"
     depends_on:
       - backend
     networks:
