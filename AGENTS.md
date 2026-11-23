@@ -66,7 +66,7 @@ Las versiones de abajo son exactas, sin rangos. Subir una versión es un PR prop
 | pnpm                                        | 10.13.1       | `packageManager` de `package.json`                          |
 | react / react-dom                           | 19.2.8        | catalog de `pnpm-workspace.yaml`                            |
 | typescript                                  | 6.0.3         | catalog                                                     |
-| vite                                        | 8.1.5         | catalog                                                     |
+| vite                                        | 8.1.6         | catalog                                                     |
 | @vitejs/plugin-react                        | 6.0.4         | `apps/web/package.json`                                     |
 | tailwindcss / @tailwindcss/vite             | 4.3.3         | `apps/web/package.json`                                     |
 | @base-ui/react (shadcn, estilo `base-nova`) | 1.6.0         | `apps/web/package.json`, `components.json`                  |

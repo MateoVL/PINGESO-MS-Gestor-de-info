@@ -117,7 +117,7 @@ export function EstadoServicio({ apiBaseUrl }: EstadoServicioProps) {
             <div className="card-icon icon-react">UI</div>
             <div>
               <h3>Microcomponentes</h3>
-              <p className="card-subtitle">React 19.2.8 • Vite 8.1.5</p>
+              <p className="card-subtitle">React 19.2.8 • Vite 8.1.6</p>
             </div>
             <span className="status-pill pill-ok">ACTIVO</span>
           </div>
