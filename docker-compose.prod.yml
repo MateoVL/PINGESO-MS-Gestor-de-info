@@ -2,7 +2,7 @@ name: ms-gestor-de-info
 
 services:
   postgres:
-    image: postgres:17.11
+    image: postgres:17.11@sha256:ff87138949ad9a46f32ff23bd6852b52ce024a13dffe9b4087be98292cdd3b4f
     container_name: gestor_info_postgres_prod
     restart: always
     environment:
@@ -28,7 +28,7 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile.migrate
     container_name: gestor_info_migrate_prod
-    restart: "no"
+    restart: 'no'
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:?Define POSTGRES_USER}:${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-gestor_info_db}?sslmode=disable
       TZ: America/Santiago
@@ -45,15 +45,12 @@ services:
     container_name: gestor_info_backend_prod
     restart: always
     ports:
-      - "127.0.0.1:${BACKEND_PORT:-5121}:8080"
+      - '127.0.0.1:${BACKEND_PORT:-5121}:8080'
     environment:
-      APP_ENV: production
       API_ENV: prod
-      API_PORT: "8080"
-      BACKEND_PORT: 8080
+      API_PORT: '8080'
       APP_NAME: ${APP_NAME:-MS Gestor de Información}
       DATABASE_URL: postgres://${POSTGRES_USER:?Define POSTGRES_USER}:${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-gestor_info_db}?sslmode=disable
-      POSTGRES_URI: postgres://${POSTGRES_USER:?Define POSTGRES_USER}:${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-gestor_info_db}?sslmode=disable
       AUTH_JWKS_URL: ${AUTH_JWKS_URL:-http://localhost:5101/api/v1/auth/jwks}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5120}
       TZ: America/Santiago
@@ -64,8 +61,6 @@ services:
       DIGITALIZACION_URL: ${DIGITALIZACION_URL:-http://localhost:5151}
       REPORTES_URL: ${REPORTES_URL:-http://localhost:5111}
       IDENTIDAD_URL: ${IDENTIDAD_URL:-http://localhost:5101}
-      MS_DIGITALIZACION_URL: ${MS_DIGITALIZACION_URL:-http://localhost:5151}
-      MS_REPORTES_URL: ${MS_REPORTES_URL:-http://localhost:5111}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       SERVICE_ROLE: ${SERVICE_ROLE:-}
       SERVICE_DEPENDS_ON: ${SERVICE_DEPENDS_ON:-}
@@ -86,10 +81,10 @@ services:
     container_name: gestor_info_frontend_prod
     restart: always
     environment:
-      PORT: "8080"
-      BACKEND_URL: "http://backend:8080"
+      PORT: '8080'
+      BACKEND_URL: 'http://backend:8080'
     ports:
-      - "127.0.0.1:${FRONTEND_PORT:-5120}:8080"
+      - '127.0.0.1:${FRONTEND_PORT:-5120}:8080'
     depends_on:
       - backend
     networks:

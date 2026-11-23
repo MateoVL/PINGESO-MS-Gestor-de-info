@@ -1,0 +1,88 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "react", "import"],
+  "ignorePatterns": [
+    "node_modules",
+    "dist",
+    "coverage",
+    "apps/api/**",
+    "apps/web/src/types/openapi.d.ts"
+  ],
+  "rules": {
+    "no-restricted-globals": [
+      "error",
+      {
+        "name": "localStorage",
+        "message": "localStorage está prohibido en el frontend (AGENTS.md sección 5 y 6). Usa cookies HttpOnly."
+      },
+      {
+        "name": "sessionStorage",
+        "message": "sessionStorage está prohibido en el frontend (AGENTS.md sección 5 y 6). Usa cookies HttpOnly."
+      },
+      {
+        "name": "fetch",
+        "message": "fetch solo está permitido dentro de archivos *.api.ts (AGENTS.md sección 3 y 6)."
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": [
+        "apps/web/src/**/*.api.ts",
+        "apps/web/src/**/*.test.ts",
+        "apps/web/src/**/*.test.tsx",
+        "apps/web/src/mocks/**/*.ts"
+      ],
+      "rules": {
+        "no-restricted-globals": [
+          "error",
+          {
+            "name": "localStorage",
+            "message": "localStorage está prohibido en el frontend (AGENTS.md sección 5 y 6). Usa cookies HttpOnly."
+          },
+          {
+            "name": "sessionStorage",
+            "message": "sessionStorage está prohibido en el frontend (AGENTS.md sección 5 y 6). Usa cookies HttpOnly."
+          }
+        ]
+      }
+    },
+    {
+      "files": ["apps/web/src/features/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["../features/*", "../../features/*", "*/features/*"],
+                "message": "No se permiten imports entre features (AGENTS.md sección 6)."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["apps/web/src/componentes/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "../componentes/*",
+                  "../../componentes/*",
+                  "../features/*",
+                  "../../features/*"
+                ],
+                "message": "Un microcomponente no importa a otro microcomponente ni a una feature (AGENTS.md sección 3)."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

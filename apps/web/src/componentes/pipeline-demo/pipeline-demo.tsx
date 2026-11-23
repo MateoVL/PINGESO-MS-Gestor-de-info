@@ -8,26 +8,43 @@ export interface PipelineDemoProps {
 }
 
 // Microcomponente autocontenido: vista pura sin lógica de negocio ni dependencia de otros microcomponentes
-export function PipelineDemo(_props: PipelineDemoProps) {
+export function PipelineDemo({ apiBaseUrl, usuario, permisos }: PipelineDemoProps) {
   const { input, result, error, handleInputChange, loadExample, runBatch } = usePipelineDemo()
+  const canOperate =
+    !permisos ||
+    permisos.length === 0 ||
+    permisos.includes('lotes:operar') ||
+    permisos.includes('lotes:administrar') ||
+    permisos.includes('lotes:crear')
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (!canOperate) return
     runBatch()
   }
 
   return (
-    <section className="pipeline-demo" id="prueba-pipeline" aria-labelledby="titulo-prueba">
+    <section
+      className="pipeline-demo"
+      id="prueba-pipeline"
+      aria-labelledby="titulo-prueba"
+      data-api-base-url={apiBaseUrl}
+      data-usuario={usuario ?? 'anonimo'}
+    >
       <header>
         <span className="demo-label">PT2 · Datos simulados</span>
         <h2 id="titulo-prueba">Prueba el pipeline de información</h2>
-        <p>Procesa un lote simulado del extractor OCR y revisa qué registros quedarían listos para importar.</p>
+        <p>
+          Procesa un lote simulado del extractor OCR y revisa qué registros quedarían listos para
+          importar.
+        </p>
       </header>
 
       <form className="batch-form" onSubmit={onSubmit}>
         <label htmlFor="lote-ocr">Lote de entrada en JSON</label>
         <p id="formato-lote">
-          Cada registro usa los campos <code>folio</code>, <code>nombre</code> y <code>correo</code>.
+          Cada registro usa los campos <code>folio</code>, <code>nombre</code> y <code>correo</code>
+          .
         </p>
         <textarea
           id="lote-ocr"
@@ -55,7 +72,8 @@ export function PipelineDemo(_props: PipelineDemoProps) {
 
       {result ? (
         <p className="batch-summary" role="status">
-          {result.total} recibidos · {result.accepted.length} listos para importar · {result.rejected.length} rechazados
+          {result.total} recibidos · {result.accepted.length} listos para importar ·{' '}
+          {result.rejected.length} rechazados
         </p>
       ) : null}
 
@@ -109,4 +127,3 @@ export function PipelineDemo(_props: PipelineDemoProps) {
     </section>
   )
 }
-

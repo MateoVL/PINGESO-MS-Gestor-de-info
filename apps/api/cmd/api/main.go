@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -23,10 +22,30 @@ const shutdownTimeout = 10 * time.Second
 var version = "dev"
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "-healthcheck" {
+		if err := checkLocalHealth("http://127.0.0.1:8080/healthz"); err != nil {
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
 	if err := run(); err != nil {
 		slog.Error("el servicio terminó con error", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
+}
+
+func checkLocalHealth(url string) error {
+	client := &http.Client{Timeout: 2 * time.Second}
+	resp, err := client.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("healthcheck respondió HTTP %d", resp.StatusCode)
+	}
+	return nil
 }
 
 func run() error {
@@ -40,7 +59,7 @@ func run() error {
 
 	db, err := store.ConnectDB(cfg)
 	if err != nil {
-		return fmt.Errorf("no se pudo crear el cliente de PostgreSQL, revisa POSTGRES_URI y las credenciales: %w", err)
+		return fmt.Errorf("no se pudo crear el cliente de PostgreSQL, revisa DATABASE_URL y las credenciales: %w", err)
 	}
 	defer db.Close()
 
@@ -48,11 +67,17 @@ func run() error {
 		return db.Ping(ctx)
 	})
 
-	batchService := service.NewBatchService(store.NewMemoryBatchStore())
-	if cfg.AppEnv == "development" {
-		if err := seedDemoBatch(context.Background(), batchService); err != nil {
-			return err
-		}
+	batchService := service.NewBatchService(store.NewPostgresBatchStore(db))
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	authenticator, authErr := api.NewJWKSAuthenticator(ctx, cfg.AuthJWKSURL)
+	if authErr != nil {
+		logger.Warn("JWKS no disponible al iniciar; las peticiones protegidas requerirán JWKS activo cuando RequireAuth esté habilitado",
+			slog.String("jwks_url", cfg.AuthJWKSURL),
+			slog.String("error", authErr.Error()),
+		)
 	}
 
 	router := api.NewRouter(
@@ -60,6 +85,8 @@ func run() error {
 			AllowedOrigins: cfg.AllowedOrigins,
 			Logger:         logger,
 			PublishDocs:    cfg.APIEnv == "dev",
+			Authenticator:  authenticator,
+			RequireAuth:    cfg.APIEnv == "prod",
 		},
 		api.Dependencies{
 			Health:  api.NewHealthHandler(healthService),
@@ -76,9 +103,6 @@ func run() error {
 		IdleTimeout:       60 * time.Second,
 		ErrorLog:          slog.NewLogLogger(logger.Handler(), slog.LevelError),
 	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
 
 	serverErr := make(chan error, 1)
 	go func() {
@@ -115,31 +139,13 @@ func run() error {
 	return nil
 }
 
-func seedDemoBatch(ctx context.Context, svc *service.BatchService) error {
-	var req store.SolicitudLote
-	if err := json.Unmarshal(api.DirtyBatchJSON, &req); err != nil {
-		return fmt.Errorf("leyendo el lote de ejemplo: %w", err)
-	}
-	_, err := svc.Receive(ctx, service.BatchInput{
-		Origen:            req.Origen,
-		ReferenciaExterna: req.ReferenciaExterna,
-		ClaveIdempotencia: "lote-demo",
-		Registros:         req.Registros,
-	})
-	if err != nil {
-		return fmt.Errorf("cargando el lote de ejemplo: %w", err)
-	}
-	return nil
-}
-
 func newLogger(cfg *config.Config) *slog.Logger {
 	var level slog.Level
 	_ = level.UnmarshalText([]byte(cfg.LogLevel))
 
 	opts := &slog.HandlerOptions{Level: level}
-	if cfg.AppEnv == "development" {
+	if cfg.APIEnv == "dev" {
 		return slog.New(slog.NewTextHandler(os.Stdout, opts))
 	}
 	return slog.New(slog.NewJSONHandler(os.Stdout, opts))
 }
-

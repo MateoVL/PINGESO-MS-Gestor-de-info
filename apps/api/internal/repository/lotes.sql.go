@@ -151,4 +151,3 @@ func (q *Queries) ListLotes(ctx context.Context, arg ListLotesParams) ([]Lote, e
 	}
 	return items, rows.Err()
 }
-

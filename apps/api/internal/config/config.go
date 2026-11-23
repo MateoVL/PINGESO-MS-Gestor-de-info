@@ -1,15 +1,14 @@
 package config
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"os"
 	"strings"
-
-	"github.com/joho/godotenv"
 )
 
-// Config almacena toda la configuración leída desde variables de entorno
+// Config almacena toda la configuración leída desde variables de entorno (AGENTS.md sección 5).
 type Config struct {
 	AppName        string
 	AppEnv         string
@@ -28,11 +27,9 @@ type Config struct {
 	PostgresUser     string
 	PostgresPassword string
 
-	MSDigitalizacionURL string
-	MSReportesURL       string
-	DigitalizacionURL   string
-	ReportesURL         string
-	IdentidadURL        string
+	DigitalizacionURL string
+	ReportesURL       string
+	IdentidadURL      string
 
 	Service ServiceInfo
 }
@@ -47,42 +44,31 @@ type ServiceInfo struct {
 }
 
 func Load() (*Config, error) {
-	_ = godotenv.Load(".env")
+	loadDotEnv(".env")
 	if _, err := os.Stat("go.mod"); err == nil {
-		_ = godotenv.Load("../../.env")
+		loadDotEnv("../../.env")
 	}
 
-	appEnv := getEnv("APP_ENV", "development")
 	apiEnv := getEnv("API_ENV", "")
-	if apiEnv == "" {
-		if appEnv == "development" {
-			apiEnv = "dev"
-		} else if appEnv == "production" {
-			apiEnv = "prod"
-		} else {
-			apiEnv = appEnv
+	appEnv := getEnv("APP_ENV", "")
+	if appEnv == "" {
+		switch apiEnv {
+		case "prod":
+			appEnv = "production"
+		case "test":
+			appEnv = "test"
+		default:
+			appEnv = "development"
 		}
 	}
 
 	port := getEnv("API_PORT", "")
-	if port == "" {
-		port = getEnv("BACKEND_PORT", "")
-	}
-
 	databaseURL := getEnv("DATABASE_URL", "")
-	if databaseURL == "" {
-		databaseURL = getEnv("POSTGRES_URI", "")
-	}
-
 	frontendURL := getEnv("FRONTEND_URL", "")
 	allowedOrigins := getList("CORS_ALLOWED_ORIGINS", "")
 	if frontendURL != "" && !contains(allowedOrigins, frontendURL) {
 		allowedOrigins = append(allowedOrigins, frontendURL)
 	}
-
-	digitalizacionURL := getEnv("DIGITALIZACION_URL", getEnv("MS_DIGITALIZACION_URL", "http://localhost:5151"))
-	reportesURL := getEnv("REPORTES_URL", getEnv("MS_REPORTES_URL", "http://localhost:5111"))
-	identidadURL := getEnv("IDENTIDAD_URL", "http://localhost:5101")
 
 	cfg := &Config{
 		AppName:        getEnv("APP_NAME", "MS Gestor de Información"),
@@ -102,11 +88,9 @@ func Load() (*Config, error) {
 		PostgresUser:     os.Getenv("POSTGRES_USER"),
 		PostgresPassword: os.Getenv("POSTGRES_PASSWORD"),
 
-		DigitalizacionURL:   digitalizacionURL,
-		ReportesURL:         reportesURL,
-		IdentidadURL:        identidadURL,
-		MSDigitalizacionURL: digitalizacionURL,
-		MSReportesURL:       reportesURL,
+		DigitalizacionURL: getEnv("DIGITALIZACION_URL", "http://localhost:5151"),
+		ReportesURL:       getEnv("REPORTES_URL", "http://localhost:5111"),
+		IdentidadURL:      getEnv("IDENTIDAD_URL", "http://localhost:5101"),
 	}
 
 	cfg.Service = ServiceInfo{
@@ -158,6 +142,33 @@ func (c *Config) validate() error {
 	}
 
 	return errors.Join(errs...)
+}
+
+func loadDotEnv(path string) {
+	f, err := os.Open(path)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		key, val, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+		key = strings.TrimSpace(key)
+		val = strings.Trim(strings.TrimSpace(val), `"'`)
+		if key != "" {
+			if _, exists := os.LookupEnv(key); !exists {
+				_ = os.Setenv(key, val)
+			}
+		}
+	}
 }
 
 func getEnv(key, fallback string) string {

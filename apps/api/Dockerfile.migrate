@@ -5,9 +5,9 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
     go install -trimpath -ldflags="-s -w" github.com/pressly/goose/v3/cmd/goose@v3.24.1 && \
-    mkdir -p /out && cp "$(find /go/bin -name goose -type f)" /out/goose
+    mkdir -p /out && cp /go/bin/goose /out/goose 2>/dev/null || cp /go/bin/*_*/goose /out/goose
 
-FROM alpine:3.23.7
+FROM alpine:3.23.7@sha256:ff7f0c727dd796aa36787bfcd9a64bf35a6ce72a73451b3359fde849b6703d63
 WORKDIR /app
 COPY --from=build --chown=nobody:nobody /out/goose /usr/local/bin/goose
 COPY --chown=nobody:nobody apps/api/db/migrations/ /app/db/migrations/

@@ -13,6 +13,16 @@ import (
 var version = "dev"
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "-healthcheck" {
+		client := &http.Client{Timeout: 2 * time.Second}
+		resp, err := client.Get("http://127.0.0.1:8080/healthz")
+		if err != nil || resp.StatusCode != http.StatusOK {
+			os.Exit(1)
+		}
+		_ = resp.Body.Close()
+		os.Exit(0)
+	}
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = os.Getenv("WEB_PORT")

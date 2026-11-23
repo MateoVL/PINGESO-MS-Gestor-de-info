@@ -25,4 +25,5 @@ COPY --from=build-server --chown=nonroot:nonroot /out/spa-server /app/spa-server
 COPY --from=build-web --chown=nonroot:nonroot /src/apps/web/dist /srv
 USER nonroot:nonroot
 EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD ["/app/spa-server", "-healthcheck"]
 ENTRYPOINT ["/app/spa-server"]

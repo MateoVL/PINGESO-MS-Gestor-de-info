@@ -1,4 +1,6 @@
-import type { HealthResponse } from '../../types/openapi'
+import type { components } from '../../types/openapi'
+
+export type HealthResponse = components['schemas']['HealthResponse']
 
 export interface HealthCheckResult {
   data: HealthResponse
@@ -20,7 +22,10 @@ export async function fetchServiceHealth(apiBaseUrl: string): Promise<HealthChec
 
   const data = (await res.json()) as HealthResponse
   const connected = res.status === 200
-  if (data?.status !== (connected ? 'healthy' : 'degraded') || data.database?.connected !== connected) {
+  if (
+    data?.status !== (connected ? 'healthy' : 'degraded') ||
+    data.database?.connected !== connected
+  ) {
     throw new Error('La API devolvió un diagnóstico inválido.')
   }
 
@@ -29,4 +34,3 @@ export async function fetchServiceHealth(apiBaseUrl: string): Promise<HealthChec
     latencyMs: Math.round(performance.now() - start),
   }
 }
-

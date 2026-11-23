@@ -11,7 +11,9 @@ function healthResponse(connected: boolean) {
       database: {
         engine: 'PostgreSQL',
         connected,
-        message: connected ? 'Base de datos conectada y operativa' : 'PostgreSQL no está disponible',
+        message: connected
+          ? 'Base de datos conectada y operativa'
+          : 'PostgreSQL no está disponible',
       },
     },
     { status: connected ? 200 : 503 }
@@ -46,7 +48,10 @@ it('consulta la API y muestra la recuperación de PostgreSQL al revisar el estad
   const panel = renderPanel()
   await vi.waitFor(() => expect(panel.querySelector('.status-degraded')).not.toBeNull())
 
-  expect(fetchMock).toHaveBeenCalledWith(expect.stringMatching(/\/api\/health$/), expect.any(Object))
+  expect(fetchMock).toHaveBeenCalledWith(
+    expect.stringMatching(/\/api\/health$/),
+    expect.any(Object)
+  )
   expect(panel.textContent).toContain('PostgreSQL no está disponible')
 
   const refreshBtn = panel.querySelector('.btn-refresh') as HTMLButtonElement
@@ -111,7 +116,10 @@ it('permite corregir un JSON inválido o restaurar el lote de ejemplo', async ()
   expect(demo.querySelector('table')).not.toBeNull()
 
   act(() => {
-    const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set
+    const setter = Object.getOwnPropertyDescriptor(
+      window.HTMLTextAreaElement.prototype,
+      'value'
+    )?.set
     setter?.call(input, '{')
     input.dispatchEvent(new Event('input', { bubbles: true }))
   })
@@ -127,4 +135,3 @@ it('permite corregir un JSON inválido o restaurar el lote de ejemplo', async ()
   expect(input.value).toBe(example)
   expect(demo.querySelector('[role="alert"]')).toBeNull()
 })
-

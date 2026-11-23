@@ -28,14 +28,25 @@ export function EstadoServicio({ apiBaseUrl }: EstadoServicioProps) {
   return (
     <div className="estado-servicio-widget">
       <div className="header-actions" style={{ marginBottom: '1rem', justifyContent: 'flex-end' }}>
-        <button className="btn-refresh" type="button" onClick={() => void checkHealth()} disabled={loading}>
+        <button
+          className="btn-refresh"
+          type="button"
+          onClick={() => void checkHealth()}
+          disabled={loading}
+        >
           {loading ? 'Verificando...' : 'Revisar Estado'}
         </button>
       </div>
 
       <section className={`banner ${overallStatusClass}`} aria-live="polite">
         <div className="banner-icon">
-          {loading ? <span>⏳</span> : health?.status === 'healthy' ? <span>✓</span> : <span>!</span>}
+          {loading ? (
+            <span>⏳</span>
+          ) : health?.status === 'healthy' ? (
+            <span>✓</span>
+          ) : (
+            <span>!</span>
+          )}
         </div>
         <div className="banner-body">
           <h2>{bannerTitle}</h2>
@@ -129,4 +140,3 @@ export function EstadoServicio({ apiBaseUrl }: EstadoServicioProps) {
     </div>
   )
 }
-
