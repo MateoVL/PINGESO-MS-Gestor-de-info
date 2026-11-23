@@ -17,4 +17,5 @@ WORKDIR /app
 COPY --from=build --chown=nonroot:nonroot /out/servicio /app/servicio
 USER nonroot:nonroot
 EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD ["/app/servicio", "-healthcheck"]
 ENTRYPOINT ["/app/servicio"]

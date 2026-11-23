@@ -24,16 +24,16 @@ const (
 
 // RegistroEntrada representa un registro tal como llega, sin limpiar
 type RegistroEntrada struct {
-	Folio  string `json:"folio" doc:"Folio identificador del documento" example:"DOC-0001"`
-	Nombre string `json:"nombre" doc:"Nombre completo del titular" example:"Camila Soto"`
-	Correo string `json:"correo" doc:"Correo electrónico de contacto" example:"camila@example.com"`
+	Folio  string `json:"folio" maxLength:"254" doc:"Folio identificador del documento" example:"DOC-0001"`
+	Nombre string `json:"nombre" maxLength:"254" doc:"Nombre completo del titular" example:"Camila Soto"`
+	Correo string `json:"correo" maxLength:"254" doc:"Correo electrónico de contacto" example:"camila@example.com"`
 }
 
 // SolicitudLote representa el payload JSON de carga de lotes
 type SolicitudLote struct {
-	Origen            string            `json:"origen" doc:"Sistema emisor del lote" example:"Extractor OCR"`
-	ReferenciaExterna string            `json:"referencia_externa" doc:"Identificador de correlación en el emisor" example:"lote-2026-001"`
-	Registros         []RegistroEntrada `json:"registros" doc:"Lista de registros a procesar"`
+	Origen            string            `json:"origen" maxLength:"254" doc:"Sistema emisor del lote" example:"Extractor OCR"`
+	ReferenciaExterna string            `json:"referencia_externa" maxLength:"254" doc:"Identificador de correlación en el emisor" example:"lote-2026-001"`
+	Registros         []RegistroEntrada `json:"registros" minItems:"1" maxItems:"5000" doc:"Lista de registros a procesar"`
 }
 
 // Lote resume un lote procesado
@@ -287,4 +287,3 @@ func page[T any](items []T, p Paginacion) []T {
 	copy(result, items[start:end])
 	return result
 }
-

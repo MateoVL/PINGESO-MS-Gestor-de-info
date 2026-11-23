@@ -67,85 +67,32 @@ type Options struct {
 	AllowedOrigins []string
 	Logger         *slog.Logger
 	PublishDocs    bool
-}
-
-// Structs de contrato Huma (API-first OpenAPI 3.1)
-
-type HealthOutput struct {
-	Status int                    `header:"-"`
-	Body   service.HealthResponse `json:"body"`
-}
-
-type LivenessStatus struct {
-	Status string `json:"status" doc:"Estado del proceso HTTP" example:"ok"`
-}
-
-type LivenessOutput struct {
-	Status int            `header:"-"`
-	Body   LivenessStatus `json:"body"`
-}
-
-type CreateBatchInput struct {
-	IdempotencyKey string              `header:"Idempotency-Key" doc:"Clave de idempotencia para evitar duplicados en reintentos" maxLength:"128" example:"lote-2026-001"`
-	Body           store.SolicitudLote `json:"body"`
-}
-
-type CreateBatchOutput struct {
-	Status   int               `header:"-"`
-	Location string            `header:"Location" doc:"URI del lote creado"`
-	Body     store.LoteDetalle `json:"body"`
-}
-
-type ListBatchesInput struct {
-	Pagina       int `query:"pagina" default:"1" minimum:"1" doc:"Número de página (1-indexed)" example:"1"`
-	TamanoPagina int `query:"tamano_pagina" default:"50" minimum:"1" maximum:"200" doc:"Cantidad de lotes por página" example:"50"`
-}
-
-type ListBatchesOutput struct {
-	Body store.ListaLotes `json:"body"`
-}
-
-type GetByIDInput struct {
-	ID string `path:"id" format:"uuid" doc:"UUID del recurso" example:"550e8400-e29b-41d4-a716-446655440000"`
-}
-
-type GetBatchOutput struct {
-	Body store.LoteDetalle `json:"body"`
-}
-
-type ListRejectionsOutput struct {
-	Body store.ListaRechazos `json:"body"`
-}
-
-type ListRecordsInput struct {
-	Pagina       int    `query:"pagina" default:"1" minimum:"1" doc:"Número de página (1-indexed)" example:"1"`
-	TamanoPagina int    `query:"tamano_pagina" default:"50" minimum:"1" maximum:"200" doc:"Cantidad de registros por página" example:"50"`
-	Folio        string `query:"folio" doc:"Filtro opcional por folio exacto (se normaliza a mayúsculas)" example:"DOC-0001"`
-	LoteID       string `query:"lote_id" format:"uuid" doc:"Filtro opcional por UUID de lote" example:"550e8400-e29b-41d4-a716-446655440000"`
-}
-
-type ListRecordsOutput struct {
-	Body store.ListaRegistros `json:"body"`
-}
-
-type GetRecordOutput struct {
-	Body store.Registro `json:"body"`
-}
-
-type DirtyMocksInput struct {
-	Cantidad int    `query:"cantidad" default:"20" minimum:"1" maximum:"5000" doc:"Cantidad de registros simulados a generar" example:"20"`
-	Formato  string `query:"formato" default:"json" enum:"json,csv" doc:"Formato de salida (json o csv)" example:"json"`
-	Semilla  uint64 `query:"semilla" doc:"Semilla opcional para generación determinista" example:"7"`
-}
-
-type DirtyMocksOutput struct {
-	Body store.SolicitudLote `json:"body"`
+	Authenticator  *Authenticator
+	RequireAuth    bool
 }
 
 // NewHumaAPI registra las operaciones tipadas en Huma v2 para generar el contrato OpenAPI 3.1 y servir /api/docs en API_ENV=dev
 func NewHumaAPI(mux *http.ServeMux, opts Options, deps Dependencies) huma.API {
 	cfg := huma.DefaultConfig("MS Gestor de Información API", "1.0.0")
 	cfg.Info.Description = "Contrato OpenAPI 3.1 del microservicio PT2 (Gestor de Información · PINGESO). Recibe lotes del Extractor de Datos OCR (PT5), limpia, valida y almacena registros en PostgreSQL para el Motor de Reportes (PT1)."
+	cfg.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
+		"cookieAuth": {
+			Type:        "apiKey",
+			In:          "cookie",
+			Name:        "session",
+			Description: "JWT firmado (EdDSA o RS256) emitido por el servicio de identidad en cookie HttpOnly",
+		},
+		"bearerAuth": {
+			Type:         "http",
+			Scheme:       "bearer",
+			BearerFormat: "JWT",
+			Description:  "JWT firmado (EdDSA o RS256) reenviado entre microservicios",
+		},
+	}
+	protectedSecurity := []map[string][]string{
+		{"cookieAuth": {}},
+		{"bearerAuth": {}},
+	}
 	if opts.PublishDocs {
 		cfg.DocsPath = "/api/docs"
 		cfg.OpenAPIPath = "/api/openapi"
@@ -212,6 +159,8 @@ func NewHumaAPI(mux *http.ServeMux, opts Options, deps Dependencies) huma.API {
 		Summary:       "Recibir, limpiar y validar un lote de registros (JSON o CSV)",
 		Tags:          []string{"Lotes"},
 		DefaultStatus: http.StatusCreated,
+		Security:      protectedSecurity,
+		Extensions:    map[string]any{"x-required-permission": PermLotesOperar},
 	}, func(ctx context.Context, in *CreateBatchInput) (*CreateBatchOutput, error) {
 		if deps.Batches == nil {
 			return nil, huma.Error500InternalServerError("servicio no configurado")
@@ -220,7 +169,7 @@ func NewHumaAPI(mux *http.ServeMux, opts Options, deps Dependencies) huma.API {
 			Origen:            in.Body.Origen,
 			ReferenciaExterna: in.Body.ReferenciaExterna,
 			ClaveIdempotencia: in.IdempotencyKey,
-			Registros:         in.Body.Registros,
+			Registros:         toStoreEntries(in.Body.Registros),
 		})
 		if err != nil {
 			return nil, err
@@ -242,6 +191,8 @@ func NewHumaAPI(mux *http.ServeMux, opts Options, deps Dependencies) huma.API {
 		Path:        "/api/v1/lotes",
 		Summary:     "Listar lotes procesados del más reciente al más antiguo",
 		Tags:        []string{"Lotes"},
+		Security:    protectedSecurity,
+		Extensions:  map[string]any{"x-required-permission": PermLotesLeer},
 	}, func(ctx context.Context, in *ListBatchesInput) (*ListBatchesOutput, error) {
 		if deps.Batches == nil {
 			return &ListBatchesOutput{}, nil
@@ -259,6 +210,8 @@ func NewHumaAPI(mux *http.ServeMux, opts Options, deps Dependencies) huma.API {
 		Path:        "/api/v1/lotes/{id}",
 		Summary:     "Obtener el detalle de un lote y sus rechazos",
 		Tags:        []string{"Lotes"},
+		Security:    protectedSecurity,
+		Extensions:  map[string]any{"x-required-permission": PermLotesLeer},
 	}, func(ctx context.Context, in *GetByIDInput) (*GetBatchOutput, error) {
 		if deps.Batches == nil {
 			return &GetBatchOutput{}, nil
@@ -276,6 +229,8 @@ func NewHumaAPI(mux *http.ServeMux, opts Options, deps Dependencies) huma.API {
 		Path:        "/api/v1/lotes/{id}/rechazos",
 		Summary:     "Listar los registros rechazados de un lote",
 		Tags:        []string{"Lotes"},
+		Security:    protectedSecurity,
+		Extensions:  map[string]any{"x-required-permission": PermLotesLeer},
 	}, func(ctx context.Context, in *GetByIDInput) (*ListRejectionsOutput, error) {
 		if deps.Batches == nil {
 			return &ListRejectionsOutput{}, nil
@@ -293,6 +248,8 @@ func NewHumaAPI(mux *http.ServeMux, opts Options, deps Dependencies) huma.API {
 		Path:        "/api/v1/registros",
 		Summary:     "Listar registros limpios y validados",
 		Tags:        []string{"Registros"},
+		Security:    protectedSecurity,
+		Extensions:  map[string]any{"x-required-permission": PermRegistrosLeer},
 	}, func(ctx context.Context, in *ListRecordsInput) (*ListRecordsOutput, error) {
 		if deps.Batches == nil {
 			return &ListRecordsOutput{}, nil
@@ -314,6 +271,8 @@ func NewHumaAPI(mux *http.ServeMux, opts Options, deps Dependencies) huma.API {
 		Path:        "/api/v1/registros/{id}",
 		Summary:     "Obtener un registro validado por su UUID",
 		Tags:        []string{"Registros"},
+		Security:    protectedSecurity,
+		Extensions:  map[string]any{"x-required-permission": PermRegistrosLeer},
 	}, func(ctx context.Context, in *GetByIDInput) (*GetRecordOutput, error) {
 		if deps.Batches == nil {
 			return &GetRecordOutput{}, nil
@@ -339,10 +298,10 @@ func NewHumaAPI(mux *http.ServeMux, opts Options, deps Dependencies) huma.API {
 			}
 			records := GenerateDirty(in.Cantidad, seed)
 			return &DirtyMocksOutput{
-				Body: store.SolicitudLote{
+				Body: SolicitudLote{
 					Origen:            "Extractor OCR",
 					ReferenciaExterna: "mock-" + strconv.FormatUint(seed, 10),
-					Registros:         records,
+					Registros:         fromStoreEntries(records),
 				},
 			}, nil
 		})
@@ -360,6 +319,23 @@ func NewRouter(opts Options, deps Dependencies) http.Handler {
 
 	humaMux := http.NewServeMux()
 	_ = NewHumaAPI(humaMux, opts, deps)
+
+	enforceAuth := opts.RequireAuth || opts.Authenticator != nil
+	authorize := func(w http.ResponseWriter, r *http.Request, requiredPerm string) (*http.Request, bool) {
+		if !enforceAuth {
+			return r, true
+		}
+		principal, err := opts.Authenticator.Authenticate(r)
+		if err != nil {
+			RespondError(w, r, ErrUnauthorized)
+			return r, false
+		}
+		if !principal.HasPermission(requiredPerm) {
+			RespondError(w, r, ErrForbidden)
+			return r, false
+		}
+		return r.WithContext(WithPrincipal(r.Context(), principal)), true
+	}
 
 	mainHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
@@ -403,9 +379,13 @@ func NewRouter(opts Options, deps Dependencies) http.Handler {
 		if path == "/api/v1/lotes" {
 			switch r.Method {
 			case http.MethodPost:
-				deps.Batches.handleCreateBatch(w, r)
+				if r, ok := authorize(w, r, PermLotesOperar); ok {
+					deps.Batches.handleCreateBatch(w, r)
+				}
 			case http.MethodGet:
-				deps.Batches.handleListBatches(w, r)
+				if r, ok := authorize(w, r, PermLotesLeer); ok {
+					deps.Batches.handleListBatches(w, r)
+				}
 			default:
 				RespondError(w, r, ErrMethodNotAllowed)
 			}
@@ -421,7 +401,9 @@ func NewRouter(opts Options, deps Dependencies) http.Handler {
 					RespondError(w, r, ErrMethodNotAllowed)
 					return
 				}
-				deps.Batches.handleGetBatch(w, r, parts[0])
+				if r, ok := authorize(w, r, PermLotesLeer); ok {
+					deps.Batches.handleGetBatch(w, r, parts[0])
+				}
 				return
 			}
 			if len(parts) == 2 && parts[0] != "" && parts[1] == "rechazos" {
@@ -429,7 +411,9 @@ func NewRouter(opts Options, deps Dependencies) http.Handler {
 					RespondError(w, r, ErrMethodNotAllowed)
 					return
 				}
-				deps.Batches.handleListRejections(w, r, parts[0])
+				if r, ok := authorize(w, r, PermLotesLeer); ok {
+					deps.Batches.handleListRejections(w, r, parts[0])
+				}
 				return
 			}
 			RespondError(w, r, ErrNotFound)
@@ -442,7 +426,9 @@ func NewRouter(opts Options, deps Dependencies) http.Handler {
 				RespondError(w, r, ErrMethodNotAllowed)
 				return
 			}
-			deps.Batches.handleListRecords(w, r)
+			if r, ok := authorize(w, r, PermRegistrosLeer); ok {
+				deps.Batches.handleListRecords(w, r)
+			}
 			return
 		}
 
@@ -457,7 +443,9 @@ func NewRouter(opts Options, deps Dependencies) http.Handler {
 				RespondError(w, r, ErrMethodNotAllowed)
 				return
 			}
-			deps.Batches.handleGetRecord(w, r, id)
+			if r, ok := authorize(w, r, PermRegistrosLeer); ok {
+				deps.Batches.handleGetRecord(w, r, id)
+			}
 			return
 		}
 
@@ -790,4 +778,3 @@ func respondServiceError(w http.ResponseWriter, r *http.Request, err error) {
 		RespondError(w, r, err)
 	}
 }
-

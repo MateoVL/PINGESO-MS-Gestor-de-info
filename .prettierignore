@@ -1,0 +1,9 @@
+node_modules
+dist
+coverage
+pnpm-lock.yaml
+contracts/openapi.yaml
+apps/web/src/types/openapi.d.ts
+apps/api/internal/repository
+apps/api/coverage.out
+

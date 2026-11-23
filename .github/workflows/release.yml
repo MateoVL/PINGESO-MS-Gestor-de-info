@@ -1,0 +1,51 @@
+name: publicacion
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
+env:
+  TRIVY_VERSION: v0.76.1
+  COSIGN_VERSION: v3.1.4
+  REGISTRY: ghcr.io
+
+jobs:
+  publicar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Construir imágenes de publicación (api y migrate)
+        run: |
+          docker build --pull -f apps/api/Dockerfile --build-arg VERSION=${GITHUB_REF_NAME} -t ${REGISTRY}/${GITHUB_REPOSITORY}/api:${GITHUB_REF_NAME} .
+          docker build --pull -f apps/api/Dockerfile.migrate -t ${REGISTRY}/${GITHUB_REPOSITORY}/migrate:${GITHUB_REF_NAME} .
+
+      - name: Generar SBOM CycloneDX con Trivy (api)
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          version: ${{ env.TRIVY_VERSION }}
+          image-ref: ${{ env.REGISTRY }}/${{ github.repository }}/api:${{ github.ref_name }}
+          format: cyclonedx
+          output: sbom-api.cdx.json
+
+      - name: Generar SBOM CycloneDX con Trivy (migrate)
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          version: ${{ env.TRIVY_VERSION }}
+          image-ref: ${{ env.REGISTRY }}/${{ github.repository }}/migrate:${{ github.ref_name }}
+          format: cyclonedx
+          output: sbom-migrate.cdx.json
+
+      - name: Instalar Cosign ${{ env.COSIGN_VERSION }} y firmar artefactos SBOM
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -fsSL -o /usr/local/bin/cosign "https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/cosign-linux-amd64"
+          chmod +x /usr/local/bin/cosign
+          cosign sign-blob --yes --bundle sbom-api.cdx.json.sigstore.json sbom-api.cdx.json
+          cosign sign-blob --yes --bundle sbom-migrate.cdx.json.sigstore.json sbom-migrate.cdx.json
+          gh release upload "${GITHUB_REF_NAME}" sbom-api.cdx.json sbom-api.cdx.json.sigstore.json sbom-migrate.cdx.json sbom-migrate.cdx.json.sigstore.json --clobber

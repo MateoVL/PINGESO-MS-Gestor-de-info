@@ -101,12 +101,15 @@ func TestErrorFormat(t *testing.T) {
 			if rec.Code != tc.code {
 				t.Fatalf("código HTTP %d, se esperaba %d", rec.Code, tc.code)
 			}
-			var body ErrorResponse
-			if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-				t.Fatalf("el error debe usar el formato estándar: %v (%s)", err, rec.Body.String())
+			if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/problem+json") {
+				t.Errorf("Content-Type esperado application/problem+json, se obtuvo %q", ct)
 			}
-			if body.Error.Code != tc.errCode || body.Error.RequestID != "req-abc" {
-				t.Errorf("cuerpo inesperado: %+v", body.Error)
+			var body ProblemDetails
+			if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+				t.Fatalf("el error debe usar RFC 9457 (application/problem+json): %v (%s)", err, rec.Body.String())
+			}
+			if body.Code != tc.errCode || body.Status != tc.code || body.RequestID != "req-abc" || body.Title == "" || body.Type == "" {
+				t.Errorf("cuerpo RFC 9457 inesperado: %+v", body)
 			}
 			if strings.Contains(rec.Body.String(), "falla inesperada") {
 				t.Error("el mensaje del panic no debe llegar al cliente")
@@ -321,4 +324,3 @@ func TestStaticMockFilesAreValid(t *testing.T) {
 		t.Error("lote-sucio.csv debe tener los mismos registros que lote-sucio.json")
 	}
 }
-

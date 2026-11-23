@@ -39,4 +39,3 @@ type Registro struct {
 	Correo   string      `json:"correo"`
 	CreadoEn time.Time   `json:"creado_en"`
 }
-

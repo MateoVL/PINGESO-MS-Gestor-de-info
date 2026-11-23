@@ -18,4 +18,3 @@ func main() {
 	}
 	_, _ = os.Stdout.Write(raw)
 }
-

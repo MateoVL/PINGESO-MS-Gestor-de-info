@@ -96,4 +96,3 @@ func nonNil(list []string) []string {
 	}
 	return list
 }
-

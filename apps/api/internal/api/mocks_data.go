@@ -76,4 +76,3 @@ func ToCSV(records []store.RegistroEntrada) ([]byte, error) {
 	w.Flush()
 	return buf.Bytes(), w.Error()
 }
-
