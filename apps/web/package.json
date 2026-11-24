@@ -34,7 +34,7 @@
     "openapi-fetch": "0.15.2",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "react-hook-form": "7.83.0",
+    "react-hook-form": "7.92.0",
     "react-router": "8.3.0"
   },
   "devDependencies": {
