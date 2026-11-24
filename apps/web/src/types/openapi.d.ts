@@ -270,11 +270,11 @@ export interface components {
         };
         LineOfWorkInfo: {
             /** @description Capacidades expuestas por este microservicio */
-            capabilities: string[] | null;
+            capabilities: string[];
             /** @description Servicios que consumen sus datos (downstream) */
-            consumers: string[] | null;
+            consumers: string[];
             /** @description Servicios de los que depende (upstream) */
-            depends_on: string[] | null;
+            depends_on: string[];
         };
         ListaLotes: {
             /**
@@ -284,7 +284,7 @@ export interface components {
              */
             readonly $schema?: string;
             /** @description Lotes de la página */
-            elementos: components["schemas"]["Lote"][] | null;
+            elementos: components["schemas"]["Lote"][];
             /**
              * Format: int64
              * @description Número de página actual (1-indexed)
@@ -312,7 +312,7 @@ export interface components {
              */
             readonly $schema?: string;
             /** @description Rechazos del lote */
-            elementos: components["schemas"]["Rechazo"][] | null;
+            elementos: components["schemas"]["Rechazo"][];
         };
         ListaRegistros: {
             /**
@@ -322,7 +322,7 @@ export interface components {
              */
             readonly $schema?: string;
             /** @description Registros aceptados de la página */
-            elementos: components["schemas"]["Registro"][] | null;
+            elementos: components["schemas"]["Registro"][];
             /**
              * Format: int64
              * @description Número de página actual (1-indexed)
@@ -368,6 +368,7 @@ export interface components {
              */
             creado_en: string;
             /**
+             * Format: uuid
              * @description UUID del lote
              * @example 550e8400-e29b-41d4-a716-446655440000
              */
@@ -414,6 +415,7 @@ export interface components {
              */
             creado_en: string;
             /**
+             * Format: uuid
              * @description UUID del lote
              * @example 550e8400-e29b-41d4-a716-446655440000
              */
@@ -430,7 +432,7 @@ export interface components {
              */
             rechazados: number;
             /** @description Detalle de los registros rechazados */
-            rechazos: components["schemas"]["Rechazo"][] | null;
+            rechazos: components["schemas"]["Rechazo"][];
             /**
              * Format: int64
              * @description Total de registros recibidos
@@ -455,7 +457,7 @@ export interface components {
              *       "folio_duplicado"
              *     ]
              */
-            motivos: string[] | null;
+            motivos: string[];
             /**
              * Format: int64
              * @description Posición 1-indexed dentro del lote
@@ -486,11 +488,13 @@ export interface components {
              */
             folio: string;
             /**
+             * Format: uuid
              * @description UUID del registro
              * @example 660e8400-e29b-41d4-a716-446655440000
              */
             id: string;
             /**
+             * Format: uuid
              * @description UUID del lote al que pertenece
              * @example 550e8400-e29b-41d4-a716-446655440000
              */
@@ -542,7 +546,7 @@ export interface components {
              */
             referencia_externa: string;
             /** @description Lista de registros a procesar */
-            registros: components["schemas"]["RegistroEntrada"][] | null;
+            registros: components["schemas"]["RegistroEntrada"][];
         };
     };
     responses: never;
@@ -638,9 +642,19 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["SolicitudLote"];
+                "text/csv": string;
             };
         };
         responses: {
+            /** @description Reintento idempotente exitoso del lote */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoteDetalle"];
+                };
+            };
             /** @description Created */
             201: {
                 headers: {

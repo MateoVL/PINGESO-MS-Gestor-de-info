@@ -1,9 +1,11 @@
 import { PipelineFeature } from './features/pipeline/PipelineFeature'
 
-export function App() {
-  const rawBaseUrl =
-    (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_BASE_URL ?? ''
-  const apiBaseUrl = rawBaseUrl.replace(/\/$/, '')
+export interface AppProps {
+  apiBaseUrl?: string
+}
+
+export function App({ apiBaseUrl = '' }: AppProps = {}) {
+  const cleanBaseUrl = apiBaseUrl.replace(/\/$/, '')
 
   return (
     <div className="layout-container">
@@ -41,7 +43,7 @@ export function App() {
 
       <main className="main-content">
         <PipelineFeature
-          apiBaseUrl={apiBaseUrl}
+          apiBaseUrl={cleanBaseUrl}
           usuario="desarrollador-local"
           permisos={['lotes:operar', 'lotes:leer', 'registros:leer']}
         />

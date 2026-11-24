@@ -43,20 +43,20 @@ Las versiones de abajo son exactas, sin rangos. Subir una versión es un PR prop
 
 ### Backend (Go)
 
-| Componente                                                     | Versión | Dónde se fija                                                     | Uso                                                 |
-| -------------------------------------------------------------- | ------- | ----------------------------------------------------------------- | --------------------------------------------------- |
-| Go (toolchain)                                                 | 1.26.5  | `go.mod`: `go 1.26.0` + `toolchain go1.26.5` y la imagen de build | Todos                                               |
-| `github.com/danielgtaylor/huma/v2`                             | v2.34.1 | `go.mod`                                                          | HTTP + OpenAPI 3.1                                  |
-| `github.com/jackc/pgx/v5`                                      | v5.10.0 | `go.mod`                                                          | Driver PostgreSQL                                   |
-| `github.com/sqlc-dev/sqlc`                                     | v1.29.0 | `Makefile` (`go run ...@v1.29.0`)                                 | Generación de queries                               |
-| `github.com/pressly/goose/v3`                                  | v3.24.1 | `go.mod`, `Makefile`, `Dockerfile.migrate`                        | Migraciones                                         |
-| `github.com/riverqueue/river` (+ `riverpgxv5`, `rivertype`)    | v0.40.0 | `go.mod`                                                          | Jobs, solo si el servicio los usa                   |
-| `github.com/golang-jwt/jwt/v5`                                 | v5.3.1  | `go.mod`                                                          | Emisión (servicio de identidad) y validación de JWT |
-| `github.com/MicahParks/keyfunc/v3`                             | v3.9.1  | `go.mod`                                                          | Lectura y caché del JWKS                            |
-| `golang.org/x/crypto`                                          | v0.54.0 | `go.mod`                                                          | Hash de contraseñas, solo servicio de identidad     |
-| `github.com/oapi-codegen/oapi-codegen/v2`                      | v2.8.2  | `Makefile` (`go run ...@v2.8.2`)                                  | Cliente Go de servicios externos                    |
-| `github.com/testcontainers/testcontainers-go/modules/postgres` | v0.43.0 | `go.mod`                                                          | PostgreSQL real en pruebas                          |
-| `github.com/wneessen/go-mail`                                  | v0.8.1  | `go.mod`                                                          | SMTP, solo si el servicio envía correo              |
+| Componente                                                     | Versión | Dónde se fija                                                      | Uso                                                 |
+| -------------------------------------------------------------- | ------- | ------------------------------------------------------------------ | --------------------------------------------------- |
+| Go (toolchain)                                                 | 1.26.11 | `go.mod`: `go 1.26.0` + `toolchain go1.26.11` y la imagen de build | Todos                                               |
+| `github.com/danielgtaylor/huma/v2`                             | v2.34.1 | `go.mod`                                                           | HTTP + OpenAPI 3.1                                  |
+| `github.com/jackc/pgx/v5`                                      | v5.10.0 | `go.mod`                                                           | Driver PostgreSQL                                   |
+| `github.com/sqlc-dev/sqlc`                                     | v1.29.0 | `Makefile` (`go run ...@v1.29.0`)                                  | Generación de queries                               |
+| `github.com/pressly/goose/v3`                                  | v3.24.1 | `go.mod`, `Makefile`, `Dockerfile.migrate`                         | Migraciones                                         |
+| `github.com/riverqueue/river` (+ `riverpgxv5`, `rivertype`)    | v0.40.0 | `go.mod`                                                           | Jobs, solo si el servicio los usa                   |
+| `github.com/golang-jwt/jwt/v5`                                 | v5.3.1  | `go.mod`                                                           | Emisión (servicio de identidad) y validación de JWT |
+| `github.com/MicahParks/keyfunc/v3`                             | v3.9.1  | `go.mod`                                                           | Lectura y caché del JWKS                            |
+| `golang.org/x/crypto`                                          | v0.55.0 | `go.mod`                                                           | Hash de contraseñas, solo servicio de identidad     |
+| `github.com/oapi-codegen/oapi-codegen/v2`                      | v2.8.2  | `Makefile` (`go run ...@v2.8.2`)                                   | Cliente Go de servicios externos                    |
+| `github.com/testcontainers/testcontainers-go/modules/postgres` | v0.43.0 | `go.mod`                                                           | PostgreSQL real en pruebas                          |
+| `github.com/wneessen/go-mail`                                  | v0.8.1  | `go.mod`                                                           | SMTP, solo si el servicio envía correo              |
 
 ### Frontend
 
@@ -66,7 +66,7 @@ Las versiones de abajo son exactas, sin rangos. Subir una versión es un PR prop
 | pnpm                                        | 10.13.1       | `packageManager` de `package.json`                          |
 | react / react-dom                           | 19.2.8        | catalog de `pnpm-workspace.yaml`                            |
 | typescript                                  | 6.0.3         | catalog                                                     |
-| vite                                        | 8.1.5         | catalog                                                     |
+| vite                                        | 8.1.6         | catalog                                                     |
 | @vitejs/plugin-react                        | 6.0.4         | `apps/web/package.json`                                     |
 | tailwindcss / @tailwindcss/vite             | 4.3.3         | `apps/web/package.json`                                     |
 | @base-ui/react (shadcn, estilo `base-nova`) | 1.6.0         | `apps/web/package.json`, `components.json`                  |
@@ -86,7 +86,7 @@ Las versiones de abajo son exactas, sin rangos. Subir una versión es un PR prop
 
 | Imagen                            | Tag                       | Digest                                                                    |
 | --------------------------------- | ------------------------- | ------------------------------------------------------------------------- |
-| golang (build)                    | `1.26.5-alpine3.23`       | `sha256:622e56dbc11a8cfe87cafa2331e9a201877271cbff918af53d3be315f3da88cc` |
+| golang (build)                    | `1.26.11-alpine3.23`      | `sha256:23f198931d4bd83b4f5a613bd75656257ae8bf832dcbc2db80e1050b5219ca2a` |
 | node (build web)                  | `22.22.0-alpine3.23`      | `sha256:e4bf2a82ad0a4037d28035ae71529873c069b13eb0455466ae0bc13363826e34` |
 | distroless (runtime api y web)    | `static-debian13:nonroot` | `sha256:f7f8f729987ad0fdf6b05eeeae94b26e6a0f613bdf46feea7fc40f7bd72953e6` |
 | alpine (runtime migrate)          | `3.23.7`                  | `sha256:ff7f0c727dd796aa36787bfcd9a64bf35a6ce72a73451b3359fde849b6703d63` |
@@ -151,7 +151,7 @@ Cada servicio publica dos imágenes, `api` y `migrate`, y su paquete de microcom
 
 | Regla                            | Cómo se cumple                                                                                  |
 | -------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Base fijada por versión y digest | `golang:1.26.5-alpine3.23@sha256:…`, nunca `latest`                                             |
+| Base fijada por versión y digest | `golang:1.26.11-alpine3.23@sha256:…`, nunca `latest`                                            |
 | Runtime mínimo                   | `gcr.io/distroless/static-debian13:nonroot` para api y web                                      |
 | Usuario no root                  | `USER nonroot:nonroot`, archivos con `--chown`                                                  |
 | Binario reproducible             | `CGO_ENABLED=0`, `-trimpath`, `-buildvcs=false`, `-ldflags="-s -w -X main.version=$VERSION"`    |
@@ -165,7 +165,7 @@ Cada servicio publica dos imágenes, `api` y `migrate`, y su paquete de microcom
 
 ```dockerfile
 # syntax=docker/dockerfile:1.7
-FROM --platform=$BUILDPLATFORM golang:1.26.5-alpine3.23@sha256:622e56dbc11a8cfe87cafa2331e9a201877271cbff918af53d3be315f3da88cc AS build
+FROM --platform=$BUILDPLATFORM golang:1.26.11-alpine3.23@sha256:23f198931d4bd83b4f5a613bd75656257ae8bf832dcbc2db80e1050b5219ca2a AS build
 WORKDIR /src
 COPY apps/api/go.mod apps/api/go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod go mod download
@@ -426,3 +426,92 @@ Cada action va fijada por SHA de commit con su versión en comentario. Un tag se
 - Toda entrada se valida en el contrato (tipos, `minLength`, `maximum`, `pattern`). Huma rechaza lo que no cumple antes de llegar al service.
 - Operaciones que mueven cupos, inventario o dinero aceptan `Idempotency-Key`, para que un reintento no descuente dos veces.
 - Los errores siguen RFC 9457 (`application/problem+json`) y nunca exponen trazas, SQL ni rutas internas.
+
+## 7. Escáneres obligatorios: SonarQube y Trivy
+
+Cada repo corre los dos escáneres en cada PR y ninguno reemplaza al otro. SonarQube mira el código propio y Trivy mira todo lo que el código trae de afuera.
+
+### Por qué dos escáneres
+
+| Escáner   | Analiza                                                         | Detecta                                                                                          | No cubre en esta configuración                          |
+| --------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------- |
+| SonarQube | Código propio de `apps/api` y `apps/web`, pruebas y cobertura   | Bugs, vulnerabilidades, code smells, duplicación, security hotspots y cobertura del código nuevo | CVE de dependencias, imagen base, Dockerfile y secretos |
+| Trivy     | Dependencias y lockfiles, Dockerfiles, Compose, imágenes y SBOM | CVE con corrección disponible, malas configuraciones y secretos embebidos                        | Lógica del código, calidad y cobertura                  |
+
+Un CVE en una dependencia no lo detecta el análisis de código. Un error de lógica o una consulta SQL mal armada no lo detecta el escaneo de dependencias e imágenes.
+
+### Qué debe solicitar cada grupo
+
+La solicitud se hace al jefe de proyecto antes de cerrar el Hito 0. Sin proyecto, token y jobs configurados no hay Quality Gate ni evidencia para el hito.
+
+| Solicitud                                               | Cuándo              | Evidencia                                                         |
+| ------------------------------------------------------- | ------------------- | ----------------------------------------------------------------- |
+| Proyecto SonarQube con clave estable (ej. `<servicio>`) | Antes del primer PR | URL del proyecto                                                  |
+| Token de análisis y `SONAR_HOST_URL`                    | Antes del primer PR | Secrets `SONAR_TOKEN` y `SONAR_HOST_URL` cargados en el repo      |
+| `sonar-project.properties` en la raíz                   | Antes del primer PR | Archivo commiteado                                                |
+| Jobs `calidad`, `seguridad` e `imagen` activos          | Hito 0              | Pipeline en verde y checks requeridos en `main`                   |
+| Excepción de Trivy, si aplica                           | Antes del merge     | `.trivyignore.yaml` con CVE, motivo y fecha de revisión, aprobado |
+
+Para la solicitud basta indicar servicio, repo, clave del proyecto SonarQube, URL de la instancia y responsable del grupo. El token es un secreto: no se comparte por chat ni por correo y se carga directo como secret del repositorio.
+
+### SonarQube: cómo se habilita y cómo se ejecuta
+
+1. Crear o solicitar el proyecto con una clave estable, por ejemplo `<servicio>`. La clave no cambia entre ramas ni entre hitos.
+2. Generar un token de análisis y guardarlo como `SONAR_TOKEN`, y la URL de la instancia como `SONAR_HOST_URL`. Ambos van en GitHub Actions Secrets, nunca en el repo.
+3. Definir "New Code" antes del primer análisis. Sin esa definición, el Quality Gate no mide el código nuevo.
+4. Commitear un `sonar-project.properties` en la raíz con `sonar.projectKey`, `sonar.sources` y las rutas de cobertura. Si las pruebas viven en carpetas propias, agregar `sonar.tests` sin solapar con `sources`.
+5. Generar la cobertura que SonarQube va a leer. En Go sale de los e2e: compilar la API con `go build -cover`, ejecutar las pruebas con `GOCOVERDIR` y convertir el resultado con `go tool covdata textfmt -i "$GOCOVERDIR" -o coverage.out`. En el front, vitest emite el `lcov`. Sin reporte de cobertura, el Quality Gate no puede cumplir el 60% de código nuevo.
+6. Agregar el scan y el Quality Gate al job `calidad` (sección 6). La action del gate falla si el gate está rojo, y esa falla es la que bloquea el merge.
+7. Antes de abrir el PR, correr el escáner local con las mismas propiedades (comando abajo). El token va en una variable de entorno local, no en el archivo.
+8. Si el gate falla, se corrige la causa. No se baja el umbral, no se excluye un archivo completo y no se marca un hotspot como seguro sin leerlo.
+
+```properties
+sonar.projectKey=<servicio>
+sonar.sources=apps/api,apps/web/src
+sonar.go.coverage.reportPaths=coverage.out
+sonar.javascript.lcov.reportPaths=apps/web/coverage/lcov.info
+sonar.exclusions=apps/api/internal/repository/**,apps/web/src/components/ui/**
+```
+
+```bash
+sonar-scanner -Dsonar.host.url="$SONAR_HOST_URL" -Dsonar.token="$SONAR_TOKEN"
+```
+
+### Trivy: cómo se habilita y cómo se ejecuta
+
+Trivy no requiere alta ni token. Se solicita que el repo ejecute los jobs `seguridad` e `imagen` y que la protección de rama los exija. El escaneo se hace siempre con la versión fijada v0.76.1, nunca con `latest`.
+
+1. Job `seguridad`: `trivy fs` sobre el repo con `--scanners vuln,misconfig,secret`, `--severity HIGH,CRITICAL`, `--ignore-unfixed` y `--exit-code 1`. Detecta CVE en `go.sum` y `pnpm-lock.yaml`, malas configuraciones de Dockerfile y Compose, y secretos.
+2. Job `imagen`: construir `api:ci` y `web:ci` y correr `trivy image` sobre cada una. Detecta CVE de la imagen base y de las capas, y secretos embebidos.
+3. Publicación: generar el SBOM CycloneDX y firmar la imagen. No bloquea el merge, pero deja trazabilidad de lo publicado.
+4. Antes del PR, repetir el escaneo local con la misma versión (comandos abajo).
+5. Si hay un hallazgo con corrección disponible, se actualiza la dependencia o la imagen base y se reconstruye. No se baja la severidad ni se ignora el CVE.
+6. Si no hay corrección, `--ignore-unfixed` ya lo deja fuera del bloqueo. Si se quiere dejar registro, se documenta, pero no se agrega una excepción innecesaria.
+7. Una excepción real va en `.trivyignore.yaml` con el CVE, el motivo y una fecha de revisión, aprobada por el jefe de proyecto. Una excepción sin fecha no se acepta.
+
+```bash
+trivy fs --scanners vuln,misconfig,secret --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 .
+docker build -t api:local -f apps/api/Dockerfile .
+trivy image --scanners vuln,secret --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 api:local
+docker build -t web:local -f apps/web/Dockerfile .
+trivy image --scanners vuln,secret --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 web:local
+```
+
+### Cómo leer y cerrar los hallazgos
+
+| Resultado                             | Acción                                                                                  | No hacer                                      |
+| ------------------------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------- |
+| SonarQube con gate rojo               | Corregir el bug o la vulnerabilidad, agregar la prueba que falta o bajar la duplicación | Bajar el umbral o excluir el archivo completo |
+| Security hotspot                      | Revisarlo y justificar la decisión                                                      | Marcarlo como seguro sin leerlo               |
+| Cobertura menor a 60% en código nuevo | Agregar un e2e que ejercite el cambio                                                   | Excluir código nuevo del análisis             |
+| Trivy HIGH/CRITICAL con fix           | Actualizar la dependencia o la imagen base                                              | Ignorar el CVE o bajar la severidad           |
+| Trivy HIGH/CRITICAL sin fix           | No bloquea por `--ignore-unfixed`, dejar registro si aplica                             | Agregar una excepción innecesaria             |
+| Secreto detectado                     | Rotarlo de inmediato y sacarlo del historial                                            | Borrar solo el último commit                  |
+| Falso positivo                        | Excepción con CVE, motivo y fecha                                                       | Excepción permanente o sin aprobación         |
+
+### Evidencia para el Hito 0
+
+- [ ] Proyecto SonarQube creado, con `SONAR_TOKEN` y `SONAR_HOST_URL` cargados como secrets
+- [ ] `sonar-project.properties` commiteado con las rutas de cobertura
+- [ ] Pipeline con los jobs `calidad`, `seguridad` e `imagen` en verde
+- [ ] Enlace al pipeline y al proyecto SonarQube en el README o en la entrega del grupo

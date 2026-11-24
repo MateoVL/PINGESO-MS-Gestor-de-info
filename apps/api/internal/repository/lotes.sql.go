@@ -7,7 +7,6 @@ package repository
 
 import (
 	"context"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -23,6 +22,24 @@ func (q *Queries) CountLotes(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const countRegistros = `-- name: CountRegistros :one
+SELECT COUNT(*) FROM registros
+WHERE ($1::varchar IS NULL OR folio = $1)
+  AND ($2::uuid IS NULL OR lote_id = $2)
+`
+
+type CountRegistrosParams struct {
+	Folio  pgtype.Text `json:"folio"`
+	LoteID pgtype.UUID `json:"lote_id"`
+}
+
+func (q *Queries) CountRegistros(ctx context.Context, arg CountRegistrosParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countRegistros, arg.Folio, arg.LoteID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createLote = `-- name: CreateLote :one
 INSERT INTO lotes (
     id, origen, referencia_externa, recibidos, aceptados, rechazados, clave_idempotencia, huella_contenido, creado_en
@@ -32,15 +49,15 @@ INSERT INTO lotes (
 `
 
 type CreateLoteParams struct {
-	ID                pgtype.UUID `json:"id"`
-	Origen            string      `json:"origen"`
-	ReferenciaExterna string      `json:"referencia_externa"`
-	Recibidos         int32       `json:"recibidos"`
-	Aceptados         int32       `json:"aceptados"`
-	Rechazados        int32       `json:"rechazados"`
-	ClaveIdempotencia pgtype.Text `json:"clave_idempotencia"`
-	HuellaContenido   string      `json:"huella_contenido"`
-	CreadoEn          time.Time   `json:"creado_en"`
+	ID                pgtype.UUID        `json:"id"`
+	Origen            string             `json:"origen"`
+	ReferenciaExterna string             `json:"referencia_externa"`
+	Recibidos         int32              `json:"recibidos"`
+	Aceptados         int32              `json:"aceptados"`
+	Rechazados        int32              `json:"rechazados"`
+	ClaveIdempotencia pgtype.Text        `json:"clave_idempotencia"`
+	HuellaContenido   string             `json:"huella_contenido"`
+	CreadoEn          pgtype.Timestamptz `json:"creado_en"`
 }
 
 func (q *Queries) CreateLote(ctx context.Context, arg CreateLoteParams) (Lote, error) {
@@ -68,6 +85,105 @@ func (q *Queries) CreateLote(ctx context.Context, arg CreateLoteParams) (Lote, e
 		&i.CreadoEn,
 	)
 	return i, err
+}
+
+const createRechazo = `-- name: CreateRechazo :one
+INSERT INTO rechazos (
+    lote_id, posicion, folio, motivos
+) VALUES (
+    $1, $2, $3, $4
+) RETURNING id, lote_id, posicion, folio, motivos
+`
+
+type CreateRechazoParams struct {
+	LoteID   pgtype.UUID `json:"lote_id"`
+	Posicion int32       `json:"posicion"`
+	Folio    string      `json:"folio"`
+	Motivos  []string    `json:"motivos"`
+}
+
+func (q *Queries) CreateRechazo(ctx context.Context, arg CreateRechazoParams) (Rechazo, error) {
+	row := q.db.QueryRow(ctx, createRechazo,
+		arg.LoteID,
+		arg.Posicion,
+		arg.Folio,
+		arg.Motivos,
+	)
+	var i Rechazo
+	err := row.Scan(
+		&i.ID,
+		&i.LoteID,
+		&i.Posicion,
+		&i.Folio,
+		&i.Motivos,
+	)
+	return i, err
+}
+
+const createRegistro = `-- name: CreateRegistro :one
+INSERT INTO registros (
+    id, lote_id, posicion, folio, nombre, correo, creado_en
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7
+) RETURNING id, lote_id, posicion, folio, nombre, correo, creado_en
+`
+
+type CreateRegistroParams struct {
+	ID       pgtype.UUID        `json:"id"`
+	LoteID   pgtype.UUID        `json:"lote_id"`
+	Posicion int32              `json:"posicion"`
+	Folio    string             `json:"folio"`
+	Nombre   string             `json:"nombre"`
+	Correo   string             `json:"correo"`
+	CreadoEn pgtype.Timestamptz `json:"creado_en"`
+}
+
+func (q *Queries) CreateRegistro(ctx context.Context, arg CreateRegistroParams) (Registro, error) {
+	row := q.db.QueryRow(ctx, createRegistro,
+		arg.ID,
+		arg.LoteID,
+		arg.Posicion,
+		arg.Folio,
+		arg.Nombre,
+		arg.Correo,
+		arg.CreadoEn,
+	)
+	var i Registro
+	err := row.Scan(
+		&i.ID,
+		&i.LoteID,
+		&i.Posicion,
+		&i.Folio,
+		&i.Nombre,
+		&i.Correo,
+		&i.CreadoEn,
+	)
+	return i, err
+}
+
+const findExistingFolios = `-- name: FindExistingFolios :many
+SELECT folio FROM registros
+WHERE folio = ANY($1::varchar[])
+`
+
+func (q *Queries) FindExistingFolios(ctx context.Context, dollar_1 []string) ([]string, error) {
+	rows, err := q.db.Query(ctx, findExistingFolios, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var folio string
+		if err := rows.Scan(&folio); err != nil {
+			return nil, err
+		}
+		items = append(items, folio)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getLoteByID = `-- name: GetLoteByID :one
@@ -114,6 +230,26 @@ func (q *Queries) GetLoteByIdempotencyKey(ctx context.Context, claveIdempotencia
 	return i, err
 }
 
+const getRegistroByID = `-- name: GetRegistroByID :one
+SELECT id, lote_id, posicion, folio, nombre, correo, creado_en FROM registros
+WHERE id = $1 LIMIT 1
+`
+
+func (q *Queries) GetRegistroByID(ctx context.Context, id pgtype.UUID) (Registro, error) {
+	row := q.db.QueryRow(ctx, getRegistroByID, id)
+	var i Registro
+	err := row.Scan(
+		&i.ID,
+		&i.LoteID,
+		&i.Posicion,
+		&i.Folio,
+		&i.Nombre,
+		&i.Correo,
+		&i.CreadoEn,
+	)
+	return i, err
+}
+
 const listLotes = `-- name: ListLotes :many
 SELECT id, origen, referencia_externa, recibidos, aceptados, rechazados, clave_idempotencia, huella_contenido, creado_en FROM lotes
 ORDER BY creado_en DESC
@@ -131,7 +267,7 @@ func (q *Queries) ListLotes(ctx context.Context, arg ListLotesParams) ([]Lote, e
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Lote{}
+	var items []Lote
 	for rows.Next() {
 		var i Lote
 		if err := rows.Scan(
@@ -149,5 +285,88 @@ func (q *Queries) ListLotes(ctx context.Context, arg ListLotesParams) ([]Lote, e
 		}
 		items = append(items, i)
 	}
-	return items, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRechazosByLoteID = `-- name: ListRechazosByLoteID :many
+SELECT id, lote_id, posicion, folio, motivos FROM rechazos
+WHERE lote_id = $1
+ORDER BY posicion ASC
+`
+
+func (q *Queries) ListRechazosByLoteID(ctx context.Context, loteID pgtype.UUID) ([]Rechazo, error) {
+	rows, err := q.db.Query(ctx, listRechazosByLoteID, loteID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Rechazo
+	for rows.Next() {
+		var i Rechazo
+		if err := rows.Scan(
+			&i.ID,
+			&i.LoteID,
+			&i.Posicion,
+			&i.Folio,
+			&i.Motivos,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRegistros = `-- name: ListRegistros :many
+SELECT id, lote_id, posicion, folio, nombre, correo, creado_en FROM registros
+WHERE ($3::varchar IS NULL OR folio = $3)
+  AND ($4::uuid IS NULL OR lote_id = $4)
+ORDER BY creado_en ASC, posicion ASC
+LIMIT $1 OFFSET $2
+`
+
+type ListRegistrosParams struct {
+	Limit  int32       `json:"limit"`
+	Offset int32       `json:"offset"`
+	Folio  pgtype.Text `json:"folio"`
+	LoteID pgtype.UUID `json:"lote_id"`
+}
+
+func (q *Queries) ListRegistros(ctx context.Context, arg ListRegistrosParams) ([]Registro, error) {
+	rows, err := q.db.Query(ctx, listRegistros,
+		arg.Limit,
+		arg.Offset,
+		arg.Folio,
+		arg.LoteID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Registro
+	for rows.Next() {
+		var i Registro
+		if err := rows.Scan(
+			&i.ID,
+			&i.LoteID,
+			&i.Posicion,
+			&i.Folio,
+			&i.Nombre,
+			&i.Correo,
+			&i.CreadoEn,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

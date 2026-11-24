@@ -2,8 +2,9 @@ import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
-const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {}
-const backendTarget = env.BACKEND_URL || env.VITE_API_BASE_URL || 'http://localhost:5121'
+const env =
+  (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {}
+const backendTarget = env.BACKEND_URL || 'http://localhost:5121'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -34,4 +35,3 @@ export default defineConfig({
     },
   },
 })
-

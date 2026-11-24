@@ -65,7 +65,7 @@ export function EstadoServicio({ apiBaseUrl }: EstadoServicioProps) {
             <div className="card-icon icon-go">Go</div>
             <div>
               <h3>Backend API</h3>
-              <p className="card-subtitle">Go 1.26.5 • Huma v2 OpenAPI 3.1</p>
+              <p className="card-subtitle">Go 1.26.11 • Huma v2 OpenAPI 3.1</p>
             </div>
             <span className={`status-pill ${backendConnected ? 'pill-ok' : 'pill-err'}`}>
               {backendConnected ? 'ONLINE' : 'OFFLINE'}
@@ -117,7 +117,7 @@ export function EstadoServicio({ apiBaseUrl }: EstadoServicioProps) {
             <div className="card-icon icon-react">UI</div>
             <div>
               <h3>Microcomponentes</h3>
-              <p className="card-subtitle">React 19.2.8 • Vite 8.1.5</p>
+              <p className="card-subtitle">React 19.2.8 • Vite 8.1.6</p>
             </div>
             <span className="status-pill pill-ok">ACTIVO</span>
           </div>

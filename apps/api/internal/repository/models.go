@@ -5,21 +5,19 @@
 package repository
 
 import (
-	"time"
-
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Lote struct {
-	ID                pgtype.UUID `json:"id"`
-	Origen            string      `json:"origen"`
-	ReferenciaExterna string      `json:"referencia_externa"`
-	Recibidos         int32       `json:"recibidos"`
-	Aceptados         int32       `json:"aceptados"`
-	Rechazados        int32       `json:"rechazados"`
-	ClaveIdempotencia pgtype.Text `json:"clave_idempotencia"`
-	HuellaContenido   string      `json:"huella_contenido"`
-	CreadoEn          time.Time   `json:"creado_en"`
+	ID                pgtype.UUID        `json:"id"`
+	Origen            string             `json:"origen"`
+	ReferenciaExterna string             `json:"referencia_externa"`
+	Recibidos         int32              `json:"recibidos"`
+	Aceptados         int32              `json:"aceptados"`
+	Rechazados        int32              `json:"rechazados"`
+	ClaveIdempotencia pgtype.Text        `json:"clave_idempotencia"`
+	HuellaContenido   string             `json:"huella_contenido"`
+	CreadoEn          pgtype.Timestamptz `json:"creado_en"`
 }
 
 type Rechazo struct {
@@ -31,11 +29,11 @@ type Rechazo struct {
 }
 
 type Registro struct {
-	ID       pgtype.UUID `json:"id"`
-	LoteID   pgtype.UUID `json:"lote_id"`
-	Posicion int32       `json:"posicion"`
-	Folio    string      `json:"folio"`
-	Nombre   string      `json:"nombre"`
-	Correo   string      `json:"correo"`
-	CreadoEn time.Time   `json:"creado_en"`
+	ID       pgtype.UUID        `json:"id"`
+	LoteID   pgtype.UUID        `json:"lote_id"`
+	Posicion int32              `json:"posicion"`
+	Folio    string             `json:"folio"`
+	Nombre   string             `json:"nombre"`
+	Correo   string             `json:"correo"`
+	CreadoEn pgtype.Timestamptz `json:"creado_en"`
 }

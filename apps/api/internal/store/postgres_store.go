@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -15,51 +16,63 @@ import (
 
 const pgUniqueViolation = "23505"
 
+// txBeginner abstrae el inicio de transacciones para permitir pruebas unitarias y uso con pgxpool.Pool.
+type txBeginner interface {
+	Begin(ctx context.Context) (pgx.Tx, error)
+}
+
 // PostgresBatchStore implementa BatchStore sobre PostgreSQL usando sqlc (internal/repository) y pgx/v5.
 type PostgresBatchStore struct {
-	pool    *pgxpool.Pool
-	queries *repository.Queries
+	txPool  txBeginner
+	queries repository.Querier
+	withTx  func(tx pgx.Tx) repository.Querier
 }
 
 func NewPostgresBatchStore(pool *pgxpool.Pool) *PostgresBatchStore {
+	baseQueries := repository.New(pool)
 	return &PostgresBatchStore{
-		pool:    pool,
-		queries: repository.New(pool),
+		txPool:  pool,
+		queries: baseQueries,
+		withTx: func(tx pgx.Tx) repository.Querier {
+			return baseQueries.WithTx(tx)
+		},
+	}
+}
+
+func newPostgresBatchStoreWithQuerier(txPool txBeginner, q repository.Querier, withTx func(tx pgx.Tx) repository.Querier) *PostgresBatchStore {
+	if withTx == nil {
+		withTx = func(_ pgx.Tx) repository.Querier { return q }
+	}
+	return &PostgresBatchStore{
+		txPool:  txPool,
+		queries: q,
+		withTx:  withTx,
 	}
 }
 
 var _ BatchStore = (*PostgresBatchStore)(nil)
 
 func (s *PostgresBatchStore) Create(ctx context.Context, nb NuevoLote) error {
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("iniciando transacción: %w", err)
+	var qtx repository.Querier = s.queries
+	var tx pgx.Tx
+	if s.txPool != nil {
+		var err error
+		tx, err = s.txPool.Begin(ctx)
+		if err != nil {
+			return fmt.Errorf("iniciando transacción: %w", err)
+		}
+		defer func() { _ = tx.Rollback(ctx) }()
+		qtx = s.withTx(tx)
 	}
-	defer func() { _ = tx.Rollback(ctx) }()
-
-	qtx := s.queries.WithTx(tx)
 
 	if len(nb.Registros) > 0 {
 		folios := make([]string, len(nb.Registros))
 		for i, r := range nb.Registros {
 			folios[i] = r.Folio
 		}
-		rows, err := tx.Query(ctx, `SELECT folio FROM registros WHERE folio = ANY($1)`, folios)
+		dup, err := qtx.FindExistingFolios(ctx, folios)
 		if err != nil {
 			return fmt.Errorf("verificando folios existentes: %w", err)
-		}
-		var dup []string
-		for rows.Next() {
-			var f string
-			if err := rows.Scan(&f); err != nil {
-				rows.Close()
-				return err
-			}
-			dup = append(dup, f)
-		}
-		rows.Close()
-		if err := rows.Err(); err != nil {
-			return err
 		}
 		if len(dup) > 0 {
 			slices.Sort(dup)
@@ -85,7 +98,7 @@ func (s *PostgresBatchStore) Create(ctx context.Context, nb NuevoLote) error {
 		Rechazados:        int32(nb.Lote.Rechazados),
 		ClaveIdempotencia: idempKey,
 		HuellaContenido:   nb.Lote.HuellaContenido,
-		CreadoEn:          nb.Lote.CreadoEn,
+		CreadoEn:          toPGTimestamptz(nb.Lote.CreadoEn),
 	})
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -100,10 +113,15 @@ func (s *PostgresBatchStore) Create(ctx context.Context, nb NuevoLote) error {
 		if err != nil {
 			return err
 		}
-		_, err = tx.Exec(ctx,
-			`INSERT INTO registros (id, lote_id, posicion, folio, nombre, correo, creado_en) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-			regUUID, loteUUID, int32(r.Posicion), r.Folio, r.Nombre, r.Correo, r.CreadoEn,
-		)
+		_, err = qtx.CreateRegistro(ctx, repository.CreateRegistroParams{
+			ID:       regUUID,
+			LoteID:   loteUUID,
+			Posicion: int32(r.Posicion),
+			Folio:    r.Folio,
+			Nombre:   r.Nombre,
+			Correo:   r.Correo,
+			CreadoEn: toPGTimestamptz(r.CreadoEn),
+		})
 		if err != nil {
 			var pgErr *pgconn.PgError
 			if errors.As(err, &pgErr) && pgErr.Code == pgUniqueViolation {
@@ -114,16 +132,21 @@ func (s *PostgresBatchStore) Create(ctx context.Context, nb NuevoLote) error {
 	}
 
 	for _, rej := range nb.Rechazos {
-		_, err := tx.Exec(ctx,
-			`INSERT INTO rechazos (lote_id, posicion, folio, motivos) VALUES ($1, $2, $3, $4)`,
-			loteUUID, int32(rej.Posicion), rej.Folio, rej.Motivos,
-		)
+		_, err := qtx.CreateRechazo(ctx, repository.CreateRechazoParams{
+			LoteID:   loteUUID,
+			Posicion: int32(rej.Posicion),
+			Folio:    rej.Folio,
+			Motivos:  rej.Motivos,
+		})
 		if err != nil {
 			return fmt.Errorf("insertando rechazo: %w", err)
 		}
 	}
 
-	return tx.Commit(ctx)
+	if tx != nil {
+		return tx.Commit(ctx)
+	}
+	return nil
 }
 
 func (s *PostgresBatchStore) FindByID(ctx context.Context, id string) (Lote, error) {
@@ -176,40 +199,28 @@ func (s *PostgresBatchStore) ListRejections(ctx context.Context, batchID string)
 	if err != nil {
 		return nil, ErrNoEncontrado
 	}
-	rows, err := s.pool.Query(ctx,
-		`SELECT lote_id, posicion, folio, motivos FROM rechazos WHERE lote_id = $1 ORDER BY posicion ASC`,
-		uid,
-	)
+	rows, err := s.queries.ListRechazosByLoteID(ctx, uid)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-
-	var out []Rechazo
-	for rows.Next() {
-		var loteUID pgtype.UUID
-		var pos int32
-		var folio string
-		var motivos []string
-		if err := rows.Scan(&loteUID, &pos, &folio, &motivos); err != nil {
-			return nil, err
+	out := make([]Rechazo, len(rows))
+	for i, r := range rows {
+		out[i] = Rechazo{
+			LoteID:   formatPGUUID(r.LoteID),
+			Posicion: int(r.Posicion),
+			Folio:    r.Folio,
+			Motivos:  r.Motivos,
 		}
-		out = append(out, Rechazo{
-			LoteID:   formatPGUUID(loteUID),
-			Posicion: int(pos),
-			Folio:    folio,
-			Motivos:  motivos,
-		})
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 func (s *PostgresBatchStore) ListRecords(ctx context.Context, f FiltroRegistros) ([]Registro, int, error) {
-	var folioArg any
+	var folioArg pgtype.Text
 	if f.Folio != "" {
-		folioArg = f.Folio
+		folioArg = pgtype.Text{String: f.Folio, Valid: true}
 	}
-	var loteArg any
+	var loteArg pgtype.UUID
 	if f.LoteID != "" {
 		uid, err := parsePGUUID(f.LoteID)
 		if err != nil {
@@ -218,40 +229,29 @@ func (s *PostgresBatchStore) ListRecords(ctx context.Context, f FiltroRegistros)
 		loteArg = uid
 	}
 
-	var total int64
-	err := s.pool.QueryRow(ctx,
-		`SELECT COUNT(*) FROM registros WHERE ($1::varchar IS NULL OR folio = $1) AND ($2::uuid IS NULL OR lote_id = $2)`,
-		folioArg, loteArg,
-	).Scan(&total)
+	total, err := s.queries.CountRegistros(ctx, repository.CountRegistrosParams{
+		Folio:  folioArg,
+		LoteID: loteArg,
+	})
 	if err != nil {
 		return nil, 0, err
 	}
 
-	rows, err := s.pool.Query(ctx,
-		`SELECT id, lote_id, posicion, folio, nombre, correo, creado_en FROM registros
-		 WHERE ($1::varchar IS NULL OR folio = $1) AND ($2::uuid IS NULL OR lote_id = $2)
-		 ORDER BY creado_en ASC, posicion ASC LIMIT $3 OFFSET $4`,
-		folioArg, loteArg, int32(f.Paginacion.Tamano), int32(f.Paginacion.Desplazamiento()),
-	)
+	rows, err := s.queries.ListRegistros(ctx, repository.ListRegistrosParams{
+		Limit:  int32(f.Paginacion.Tamano),
+		Offset: int32(f.Paginacion.Desplazamiento()),
+		Folio:  folioArg,
+		LoteID: loteArg,
+	})
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
 
-	out := []Registro{}
-	for rows.Next() {
-		var idUID, loteUID pgtype.UUID
-		var pos int32
-		var rec Registro
-		if err := rows.Scan(&idUID, &loteUID, &pos, &rec.Folio, &rec.Nombre, &rec.Correo, &rec.CreadoEn); err != nil {
-			return nil, 0, err
-		}
-		rec.ID = formatPGUUID(idUID)
-		rec.LoteID = formatPGUUID(loteUID)
-		rec.Posicion = int(pos)
-		out = append(out, rec)
+	out := make([]Registro, len(rows))
+	for i, r := range rows {
+		out[i] = mapRepoRegistro(r)
 	}
-	return out, int(total), rows.Err()
+	return out, int(total), nil
 }
 
 func (s *PostgresBatchStore) FindRecordByID(ctx context.Context, id string) (Registro, error) {
@@ -259,23 +259,14 @@ func (s *PostgresBatchStore) FindRecordByID(ctx context.Context, id string) (Reg
 	if err != nil {
 		return Registro{}, ErrNoEncontrado
 	}
-	var idUID, loteUID pgtype.UUID
-	var pos int32
-	var rec Registro
-	err = s.pool.QueryRow(ctx,
-		`SELECT id, lote_id, posicion, folio, nombre, correo, creado_en FROM registros WHERE id = $1 LIMIT 1`,
-		uid,
-	).Scan(&idUID, &loteUID, &pos, &rec.Folio, &rec.Nombre, &rec.Correo, &rec.CreadoEn)
+	row, err := s.queries.GetRegistroByID(ctx, uid)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Registro{}, ErrNoEncontrado
 	}
 	if err != nil {
 		return Registro{}, err
 	}
-	rec.ID = formatPGUUID(idUID)
-	rec.LoteID = formatPGUUID(loteUID)
-	rec.Posicion = int(pos)
-	return rec, nil
+	return mapRepoRegistro(row), nil
 }
 
 func parsePGUUID(s string) (pgtype.UUID, error) {
@@ -294,6 +285,10 @@ func formatPGUUID(u pgtype.UUID) string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
 }
 
+func toPGTimestamptz(t time.Time) pgtype.Timestamptz {
+	return pgtype.Timestamptz{Time: t.UTC(), Valid: !t.IsZero()}
+}
+
 func mapRepoLote(r repository.Lote) Lote {
 	return Lote{
 		ID:                formatPGUUID(r.ID),
@@ -302,8 +297,20 @@ func mapRepoLote(r repository.Lote) Lote {
 		Recibidos:         int(r.Recibidos),
 		Aceptados:         int(r.Aceptados),
 		Rechazados:        int(r.Rechazados),
-		CreadoEn:          r.CreadoEn,
+		CreadoEn:          r.CreadoEn.Time,
 		ClaveIdempotencia: r.ClaveIdempotencia.String,
 		HuellaContenido:   r.HuellaContenido,
+	}
+}
+
+func mapRepoRegistro(r repository.Registro) Registro {
+	return Registro{
+		ID:       formatPGUUID(r.ID),
+		LoteID:   formatPGUUID(r.LoteID),
+		Posicion: int(r.Posicion),
+		Folio:    r.Folio,
+		Nombre:   r.Nombre,
+		Correo:   r.Correo,
+		CreadoEn: r.CreadoEn.Time,
 	}
 }

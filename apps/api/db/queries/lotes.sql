@@ -21,6 +21,10 @@ LIMIT $1 OFFSET $2;
 -- name: CountLotes :one
 SELECT COUNT(*) FROM lotes;
 
+-- name: FindExistingFolios :many
+SELECT folio FROM registros
+WHERE folio = ANY($1::varchar[]);
+
 -- name: CreateRegistro :one
 INSERT INTO registros (
     id, lote_id, posicion, folio, nombre, correo, creado_en
@@ -31,6 +35,11 @@ INSERT INTO registros (
 -- name: GetRegistroByID :one
 SELECT * FROM registros
 WHERE id = $1 LIMIT 1;
+
+-- name: CountRegistros :one
+SELECT COUNT(*) FROM registros
+WHERE (sqlc.narg('folio')::varchar IS NULL OR folio = sqlc.narg('folio'))
+  AND (sqlc.narg('lote_id')::uuid IS NULL OR lote_id = sqlc.narg('lote_id'));
 
 -- name: ListRegistros :many
 SELECT * FROM registros

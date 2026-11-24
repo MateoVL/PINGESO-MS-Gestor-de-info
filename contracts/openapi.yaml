@@ -145,23 +145,17 @@ components:
           description: Capacidades expuestas por este microservicio
           items:
             type: string
-          type:
-            - array
-            - "null"
+          type: array
         consumers:
           description: Servicios que consumen sus datos (downstream)
           items:
             type: string
-          type:
-            - array
-            - "null"
+          type: array
         depends_on:
           description: Servicios de los que depende (upstream)
           items:
             type: string
-          type:
-            - array
-            - "null"
+          type: array
       required:
         - depends_on
         - consumers
@@ -181,9 +175,7 @@ components:
           description: Lotes de la página
           items:
             $ref: "#/components/schemas/Lote"
-          type:
-            - array
-            - "null"
+          type: array
         pagina:
           description: Número de página actual (1-indexed)
           examples:
@@ -222,9 +214,7 @@ components:
           description: Rechazos del lote
           items:
             $ref: "#/components/schemas/Rechazo"
-          type:
-            - array
-            - "null"
+          type: array
       required:
         - elementos
       type: object
@@ -242,9 +232,7 @@ components:
           description: Registros aceptados de la página
           items:
             $ref: "#/components/schemas/Registro"
-          type:
-            - array
-            - "null"
+          type: array
         pagina:
           description: Número de página actual (1-indexed)
           examples:
@@ -304,6 +292,7 @@ components:
           description: UUID del lote
           examples:
             - 550e8400-e29b-41d4-a716-446655440000
+          format: uuid
           type: string
         origen:
           description: Sistema emisor
@@ -360,6 +349,7 @@ components:
           description: UUID del lote
           examples:
             - 550e8400-e29b-41d4-a716-446655440000
+          format: uuid
           type: string
         origen:
           description: Sistema emisor
@@ -376,9 +366,7 @@ components:
           description: Detalle de los registros rechazados
           items:
             $ref: "#/components/schemas/Rechazo"
-          type:
-            - array
-            - "null"
+          type: array
         recibidos:
           description: Total de registros recibidos
           examples:
@@ -414,9 +402,7 @@ components:
             - - folio_duplicado
           items:
             type: string
-          type:
-            - array
-            - "null"
+          type: array
         posicion:
           description: Posición 1-indexed dentro del lote
           examples:
@@ -456,11 +442,13 @@ components:
           description: UUID del registro
           examples:
             - 660e8400-e29b-41d4-a716-446655440000
+          format: uuid
           type: string
         lote_id:
           description: UUID del lote al que pertenece
           examples:
             - 550e8400-e29b-41d4-a716-446655440000
+          format: uuid
           type: string
         nombre:
           description: Nombre normalizado
@@ -489,19 +477,16 @@ components:
           description: Correo electrónico de contacto
           examples:
             - camila@example.com
-          maxLength: 254
           type: string
         folio:
           description: Folio identificador del documento
           examples:
             - DOC-0001
-          maxLength: 254
           type: string
         nombre:
           description: Nombre completo del titular
           examples:
             - Camila Soto
-          maxLength: 254
           type: string
       required:
         - folio
@@ -522,23 +507,17 @@ components:
           description: Sistema emisor del lote
           examples:
             - Extractor OCR
-          maxLength: 254
           type: string
         referencia_externa:
           description: Identificador de correlación en el emisor
           examples:
             - lote-2026-001
-          maxLength: 254
           type: string
         registros:
           description: Lista de registros a procesar
           items:
             $ref: "#/components/schemas/RegistroEntrada"
-          maxItems: 5000
-          minItems: 1
-          type:
-            - array
-            - "null"
+          type: array
       required:
         - origen
         - referencia_externa
@@ -594,7 +573,6 @@ paths:
             description: Número de página (1-indexed)
             examples:
               - 1
-            format: int64
             minimum: 1
             type: integer
         - description: Cantidad de lotes por página
@@ -607,7 +585,6 @@ paths:
             description: Cantidad de lotes por página
             examples:
               - 50
-            format: int64
             maximum: 200
             minimum: 1
             type: integer
@@ -627,6 +604,7 @@ paths:
       security:
         - cookieAuth: []
         - bearerAuth: []
+        - {}
       summary: Listar lotes procesados del más reciente al más antiguo
       tags:
         - Lotes
@@ -649,8 +627,17 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/SolicitudLote"
+          text/csv:
+            schema:
+              type: string
         required: true
       responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoteDetalle"
+          description: Reintento idempotente exitoso del lote
         "201":
           content:
             application/json:
@@ -671,6 +658,7 @@ paths:
       security:
         - cookieAuth: []
         - bearerAuth: []
+        - {}
       summary: Recibir, limpiar y validar un lote de registros (JSON o CSV)
       tags:
         - Lotes
@@ -689,7 +677,6 @@ paths:
             examples:
               - 550e8400-e29b-41d4-a716-446655440000
             format: uuid
-            pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
             type: string
       responses:
         "200":
@@ -707,6 +694,7 @@ paths:
       security:
         - cookieAuth: []
         - bearerAuth: []
+        - {}
       summary: Obtener el detalle de un lote y sus rechazos
       tags:
         - Lotes
@@ -725,7 +713,6 @@ paths:
             examples:
               - 550e8400-e29b-41d4-a716-446655440000
             format: uuid
-            pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
             type: string
       responses:
         "200":
@@ -743,6 +730,7 @@ paths:
       security:
         - cookieAuth: []
         - bearerAuth: []
+        - {}
       summary: Listar los registros rechazados de un lote
       tags:
         - Lotes
@@ -761,7 +749,6 @@ paths:
             description: Cantidad de registros simulados a generar
             examples:
               - 20
-            format: int64
             maximum: 5000
             minimum: 1
             type: integer
@@ -788,8 +775,6 @@ paths:
             description: Semilla opcional para generación determinista
             examples:
               - 7
-            format: int64
-            minimum: 0
             type: integer
       responses:
         "200":
@@ -821,7 +806,6 @@ paths:
             description: Número de página (1-indexed)
             examples:
               - 1
-            format: int64
             minimum: 1
             type: integer
         - description: Cantidad de registros por página
@@ -834,7 +818,6 @@ paths:
             description: Cantidad de registros por página
             examples:
               - 50
-            format: int64
             maximum: 200
             minimum: 1
             type: integer
@@ -847,7 +830,6 @@ paths:
             description: Filtro opcional por folio exacto (se normaliza a mayúsculas)
             examples:
               - DOC-0001
-            maxLength: 254
             type: string
         - description: Filtro opcional por UUID de lote
           example: 550e8400-e29b-41d4-a716-446655440000
@@ -859,7 +841,6 @@ paths:
             examples:
               - 550e8400-e29b-41d4-a716-446655440000
             format: uuid
-            pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
             type: string
       responses:
         "200":
@@ -877,6 +858,7 @@ paths:
       security:
         - cookieAuth: []
         - bearerAuth: []
+        - {}
       summary: Listar registros limpios y validados
       tags:
         - Registros
@@ -895,7 +877,6 @@ paths:
             examples:
               - 550e8400-e29b-41d4-a716-446655440000
             format: uuid
-            pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
             type: string
       responses:
         "200":
@@ -913,6 +894,7 @@ paths:
       security:
         - cookieAuth: []
         - bearerAuth: []
+        - {}
       summary: Obtener un registro validado por su UUID
       tags:
         - Registros

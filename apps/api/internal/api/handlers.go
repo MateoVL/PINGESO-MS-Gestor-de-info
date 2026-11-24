@@ -292,7 +292,10 @@ func NewHumaAPI(mux *http.ServeMux, opts Options, deps Dependencies) huma.API {
 			Summary:     "Generar lote simulado de datos sucios de OCR (solo entornos de desarrollo/prueba)",
 			Tags:        []string{"Mocks"},
 		}, func(_ context.Context, in *DirtyMocksInput) (*DirtyMocksOutput, error) {
-			seed := in.Semilla
+			seed := uint64(0)
+			if in.Semilla > 0 {
+				seed = uint64(in.Semilla)
+			}
 			if seed == 0 {
 				seed = uint64(time.Now().UnixNano())
 			}
@@ -307,7 +310,51 @@ func NewHumaAPI(mux *http.ServeMux, opts Options, deps Dependencies) huma.API {
 		})
 	}
 
+	normalizeOpenAPISpec(api.OpenAPI())
+
 	return api
+}
+
+func normalizeOpenAPISpec(oapi *huma.OpenAPI) {
+	if oapi == nil {
+		return
+	}
+	if oapi.Paths != nil {
+		if lotesPath := oapi.Paths["/api/v1/lotes"]; lotesPath != nil && lotesPath.Post != nil {
+			op := lotesPath.Post
+			if op.RequestBody != nil && op.RequestBody.Content != nil {
+				op.RequestBody.Content["text/csv"] = &huma.MediaType{
+					Schema: &huma.Schema{Type: "string"},
+				}
+			}
+			if op.Responses != nil {
+				if r201, ok := op.Responses["201"]; ok && r201 != nil {
+					op.Responses["200"] = &huma.Response{
+						Description: "Reintento idempotente exitoso del lote",
+						Content:     r201.Content,
+					}
+				}
+			}
+		}
+		for _, item := range oapi.Paths {
+			if item == nil {
+				continue
+			}
+			for _, op := range []*huma.Operation{item.Get, item.Post, item.Put, item.Delete, item.Patch} {
+				if op == nil {
+					continue
+				}
+				if len(op.Security) > 0 {
+					op.Security = append(op.Security, map[string][]string{})
+				}
+				for _, p := range op.Parameters {
+					if p != nil && p.Schema != nil && p.Schema.Format == "int64" {
+						p.Schema.Format = ""
+					}
+				}
+			}
+		}
+	}
 }
 
 // NewRouter construye el handler HTTP completo con Huma para OpenAPI/docs y soporte nativo de JSON + CSV y formato de errores

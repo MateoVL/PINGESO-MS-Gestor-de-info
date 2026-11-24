@@ -13,7 +13,7 @@
     "test": "pnpm --filter @pingeso/ms-gestor-de-info-ui test",
     "test:coverage": "pnpm --filter @pingeso/ms-gestor-de-info-ui test:coverage",
     "test:api": "cd apps/api && go test ./...",
-    "test:e2e:api": "bash -euo pipefail -c 'cd apps/api && rm -rf .cache/covdata && mkdir -p .cache/covdata && go build -cover -o .cache/api-cover ./cmd/api && go test -coverpkg=./... ./e2e/... ./internal/... -args -test.gocoverdir=\"$PWD/.cache/covdata\" && go tool covdata textfmt -i=.cache/covdata -o=coverage.out'",
+    "test:e2e:api": "bash -euo pipefail -c 'cd apps/api && rm -rf .cache/covdata && mkdir -p .cache/covdata && go build -cover -o .cache/api-cover ./cmd/api && go test -coverpkg=./... ./e2e/... ./internal/... -args -test.gocoverdir=\"$PWD/.cache/covdata\" && go tool covdata textfmt -i=.cache/covdata -o=coverage.out && cp coverage.out ../../coverage.out'",
     "lint": "oxlint --deny-warnings apps/web/src",
     "format": "prettier --write \"apps/web/src/**/*.{ts,tsx,css}\"",
     "format:check": "prettier --check \"apps/web/src/**/*.{ts,tsx,css}\"",
@@ -25,5 +25,11 @@
     "oxlint": "1.75.0",
     "prettier": "3.9.6",
     "prettier-plugin-tailwindcss": "0.8.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "lodash": "4.18.0",
+      "@faker-js/faker": "10.5.0"
+    }
   }
 }
