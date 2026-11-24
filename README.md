@@ -70,6 +70,7 @@ docker compose up --build
 - **Organización SonarQube Cloud (`sonar.organization`)**: `pingeso-gestor-info` (`sonar-project.properties`)
 - **Clave del proyecto SonarQube (`sonar.projectKey`)**: `MateoVL_PINGESO-MS-Gestor-de-info` (`sonar-project.properties`)
 - **Requisito en SonarQube Cloud**: En **Administration → Analysis Method**, mantener **Automatic Analysis** desactivado para permitir el análisis desde GitHub Actions (`CI-based Analysis`) con lectura de cobertura (`coverage.out` y `apps/web/coverage/lcov.info`).
+- **Alcance de cobertura en SonarQube Cloud (`sonar.exclusions`)**: Dado que el nuevo motor de alcance de SonarQube Cloud analiza todo el repositorio por defecto e ignora `sonar.sources`, se excluyen explícitamente en `sonar-project.properties` los archivos generados (`apps/api/internal/repository/**`, `apps/web/src/types/**`), entrypoints de proceso (`apps/api/cmd/**`, `apps/web/server.go`, `apps/web/src/main.tsx`), mocks de desarrollo (`apps/web/src/mocks/**`) y archivos de prueba para que el Quality Gate mida únicamente la cobertura sobre las capas de negocio y microcomponentes.
 - **Ejecución local de SonarQube**:
   ```bash
   pnpm test:coverage && pnpm test:e2e:api

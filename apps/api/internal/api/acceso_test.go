@@ -370,3 +370,89 @@ func TestAutenticacionJWTControlesDeSeguridad(t *testing.T) {
 		}
 	})
 }
+
+func TestAuthHelpersAndJWKS(t *testing.T) {
+	p := Principal{
+		Subject:  "usr-1",
+		Rol:      "operador",
+		Permisos: []string{PermLotesAdministrar},
+	}
+	if !p.HasPermission("") {
+		t.Error("permiso vacío debe permitirse")
+	}
+	if !p.HasPermission(PermLotesOperar) {
+		t.Error("lotes:administrar debe otorgar lotes:operar")
+	}
+	if p.HasPermission(PermRegistrosLeer) {
+		t.Error("no debe otorgar permiso de otro recurso")
+	}
+
+	ctx := WithPrincipal(context.Background(), p)
+	got, ok := PrincipalFromContext(ctx)
+	if !ok || got.Subject != "usr-1" {
+		t.Fatalf("PrincipalFromContext inesperado: %+v, ok=%v", got, ok)
+	}
+	if _, ok := PrincipalFromContext(context.Background()); ok {
+		t.Error("contexto vacío no debe tener Principal")
+	}
+
+	if _, err := NewJWKSAuthenticator(context.Background(), "   "); err == nil {
+		t.Error("NewJWKSAuthenticator con URL vacía debe fallar")
+	}
+
+	var nilAuth *Authenticator
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/lotes", nil)
+	if _, err := nilAuth.Authenticate(req); err == nil {
+		t.Error("Authenticator nil debe rechazar")
+	}
+	emptyAuth := &Authenticator{}
+	if _, err := emptyAuth.Authenticate(req); err == nil {
+		t.Error("Authenticator sin keyfunc debe rechazar")
+	}
+
+	// Servidor JWKS simulado
+	jwksSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"keys":[{"kty":"OKP","crv":"Ed25519","kid":"test-key","x":"11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"}]}`))
+	}))
+	defer jwksSrv.Close()
+
+	jwksAuth, err := NewJWKSAuthenticator(context.Background(), jwksSrv.URL)
+	if err != nil || jwksAuth == nil {
+		t.Fatalf("NewJWKSAuthenticator con servidor válido falló: %v", err)
+	}
+
+	// Reconexión perezosa cuando keyfunc es nil inicialmente
+	lazyAuth := &Authenticator{jwksURL: jwksSrv.URL}
+	reqWithCookie := httptest.NewRequest(http.MethodGet, "/api/v1/lotes", nil)
+	reqWithCookie.AddCookie(&http.Cookie{Name: "access_token", Value: "token-invalido"})
+	if _, err := lazyAuth.Authenticate(reqWithCookie); err == nil {
+		t.Error("token inválido debe fallar tras cargar JWKS")
+	}
+
+	// Claims alternativos: role, permissions, scope
+	keys := newTestKeyPair(t)
+	now := time.Now()
+	altToken, err := jwt.NewWithClaims(jwt.SigningMethodEdDSA, authClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   "svc-alt",
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(time.Hour)),
+		},
+		Role:        "reportes",
+		Permissions: []string{PermRegistrosLeer, PermRegistrosLeer, " "},
+		Scope:       "lotes:leer registros:leer",
+	}).SignedString(keys.edPriv)
+	if err != nil {
+		t.Fatalf("firmando token alternativo: %v", err)
+	}
+	reqAlt := httptest.NewRequest(http.MethodGet, "/api/v1/registros", nil)
+	reqAlt.AddCookie(&http.Cookie{Name: "access_token", Value: altToken})
+	principal, err := keys.authenticator().Authenticate(reqAlt)
+	if err != nil {
+		t.Fatalf("Authenticate con claims alternativos falló: %v", err)
+	}
+	if principal.Rol != "reportes" || !principal.HasPermission(PermLotesLeer) || !principal.HasPermission(PermRegistrosLeer) {
+		t.Errorf("principal con claims alternativos inesperado: %+v", principal)
+	}
+}
