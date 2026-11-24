@@ -30,9 +30,9 @@ type DatabaseStatus struct {
 }
 
 type LineOfWorkInfo struct {
-	DependsOn    []string `json:"depends_on" doc:"Servicios de los que depende (upstream)"`
-	Consumers    []string `json:"consumers" doc:"Servicios que consumen sus datos (downstream)"`
-	Capabilities []string `json:"capabilities" doc:"Capacidades expuestas por este microservicio"`
+	DependsOn    []string `json:"depends_on" nullable:"false" doc:"Servicios de los que depende (upstream)"`
+	Consumers    []string `json:"consumers" nullable:"false" doc:"Servicios que consumen sus datos (downstream)"`
+	Capabilities []string `json:"capabilities" nullable:"false" doc:"Capacidades expuestas por este microservicio"`
 }
 
 type PingFunc func(ctx context.Context) error
@@ -96,4 +96,3 @@ func nonNil(list []string) []string {
 	}
 	return list
 }
-

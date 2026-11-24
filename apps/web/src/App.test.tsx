@@ -11,7 +11,9 @@ function healthResponse(connected: boolean) {
       database: {
         engine: 'PostgreSQL',
         connected,
-        message: connected ? 'Base de datos conectada y operativa' : 'PostgreSQL no está disponible',
+        message: connected
+          ? 'Base de datos conectada y operativa'
+          : 'PostgreSQL no está disponible',
       },
     },
     { status: connected ? 200 : 503 }
@@ -46,7 +48,10 @@ it('consulta la API y muestra la recuperación de PostgreSQL al revisar el estad
   const panel = renderPanel()
   await vi.waitFor(() => expect(panel.querySelector('.status-degraded')).not.toBeNull())
 
-  expect(fetchMock).toHaveBeenCalledWith(expect.stringMatching(/\/api\/health$/), expect.any(Object))
+  expect(fetchMock).toHaveBeenCalledWith(
+    expect.stringMatching(/\/api\/health$/),
+    expect.any(Object)
+  )
   expect(panel.textContent).toContain('PostgreSQL no está disponible')
 
   const refreshBtn = panel.querySelector('.btn-refresh') as HTMLButtonElement
@@ -92,11 +97,31 @@ it('procesa el lote OCR simulado aunque la API esté inaccesible', async () => {
     'Correo inválido',
     'Folio duplicado',
   ])
-  expect(fetchMock).toHaveBeenCalledTimes(1)
+  expect(fetchMock).toHaveBeenCalledTimes(2)
 })
 
 it('permite corregir un JSON inválido o restaurar el lote de ejemplo', async () => {
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(healthResponse(true)))
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn()
+      .mockResolvedValueOnce(healthResponse(true))
+      .mockResolvedValueOnce(
+        Response.json(
+          {
+            id: '550e8400-e29b-41d4-a716-446655440000',
+            origen: 'Extractor OCR',
+            referencia_externa: 'ui-demo',
+            recibidos: 2,
+            aceptados: 2,
+            rechazados: 0,
+            creado_en: '2026-11-20T12:00:00Z',
+            rechazos: [],
+          },
+          { status: 201 }
+        )
+      )
+  )
 
   const panel = renderPanel()
   const demo = panel.querySelector('#prueba-pipeline') as HTMLElement
@@ -111,7 +136,10 @@ it('permite corregir un JSON inválido o restaurar el lote de ejemplo', async ()
   expect(demo.querySelector('table')).not.toBeNull()
 
   act(() => {
-    const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set
+    const setter = Object.getOwnPropertyDescriptor(
+      window.HTMLTextAreaElement.prototype,
+      'value'
+    )?.set
     setter?.call(input, '{')
     input.dispatchEvent(new Event('input', { bubbles: true }))
   })
@@ -127,4 +155,3 @@ it('permite corregir un JSON inválido o restaurar el lote de ejemplo', async ()
   expect(input.value).toBe(example)
   expect(demo.querySelector('[role="alert"]')).toBeNull()
 })
-

@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM --platform=$BUILDPLATFORM golang:1.26.5-alpine3.23@sha256:622e56dbc11a8cfe87cafa2331e9a201877271cbff918af53d3be315f3da88cc AS build
+FROM --platform=$BUILDPLATFORM golang:1.26.11-alpine3.23@sha256:23f198931d4bd83b4f5a613bd75656257ae8bf832dcbc2db80e1050b5219ca2a AS build
 WORKDIR /src
 COPY apps/api/go.mod apps/api/go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod go mod download
@@ -17,4 +17,5 @@ WORKDIR /app
 COPY --from=build --chown=nonroot:nonroot /out/servicio /app/servicio
 USER nonroot:nonroot
 EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD ["/app/servicio", "-healthcheck"]
 ENTRYPOINT ["/app/servicio"]

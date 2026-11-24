@@ -101,12 +101,15 @@ func TestErrorFormat(t *testing.T) {
 			if rec.Code != tc.code {
 				t.Fatalf("código HTTP %d, se esperaba %d", rec.Code, tc.code)
 			}
-			var body ErrorResponse
-			if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-				t.Fatalf("el error debe usar el formato estándar: %v (%s)", err, rec.Body.String())
+			if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/problem+json") {
+				t.Errorf("Content-Type esperado application/problem+json, se obtuvo %q", ct)
 			}
-			if body.Error.Code != tc.errCode || body.Error.RequestID != "req-abc" {
-				t.Errorf("cuerpo inesperado: %+v", body.Error)
+			var body ProblemDetails
+			if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+				t.Fatalf("el error debe usar RFC 9457 (application/problem+json): %v (%s)", err, rec.Body.String())
+			}
+			if body.Code != tc.errCode || body.Status != tc.code || body.RequestID != "req-abc" || body.Title == "" || body.Type == "" {
+				t.Errorf("cuerpo RFC 9457 inesperado: %+v", body)
 			}
 			if strings.Contains(rec.Body.String(), "falla inesperada") {
 				t.Error("el mensaje del panic no debe llegar al cliente")
@@ -322,3 +325,75 @@ func TestStaticMockFilesAreValid(t *testing.T) {
 	}
 }
 
+func TestContractHelpersAndMiddlewareBranches(t *testing.T) {
+	in := []RegistroEntrada{{Folio: "F-1", Nombre: "Ana", Correo: "ana@example.com"}}
+	storeEntries := toStoreEntries(in)
+	roundTrip := fromStoreEntries(storeEntries)
+	if !reflect.DeepEqual(in, roundTrip) {
+		t.Fatalf("conversión de entradas inconsistente: %+v != %+v", in, roundTrip)
+	}
+
+	if ErrInvalidData.Error() == "" || ErrInvalidData.GetStatus() != http.StatusBadRequest {
+		t.Fatalf("AppError getters inesperados: %s / %d", ErrInvalidData.Error(), ErrInvalidData.GetStatus())
+	}
+	if !errors.Is(ErrInvalidData.WithDetails("x"), ErrInvalidData) {
+		t.Error("errors.Is debe reconocer copias de AppError con el mismo código")
+	}
+	if !isAllowedMethod("post", http.MethodGet, http.MethodPost) || isAllowedMethod("DELETE", http.MethodGet) {
+		t.Error("isAllowedMethod inesperado")
+	}
+
+	// CORS wildcard
+	corsWildcard := CORSMiddleware([]string{"*"})(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	rec := do(corsWildcard, http.MethodGet, "/test", map[string]string{"Origin": "https://cualquier.cl"})
+	if rec.Header().Get("Access-Control-Allow-Origin") != "*" {
+		t.Errorf("se esperaba wildcard CORS, se obtuvo %q", rec.Header().Get("Access-Control-Allow-Origin"))
+	}
+
+	// RequestIDMiddleware propagando cookie de sesión como Bearer en contexto
+	var tokenEnCtx string
+	reqIDHandler := RequestIDMiddleware(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		tokenEnCtx = service.AuthTokenFromContext(r.Context())
+	}))
+	reqCookie := httptest.NewRequest(http.MethodGet, "/", nil)
+	reqCookie.AddCookie(&http.Cookie{Name: "session", Value: "jwt-123"})
+	reqIDHandler.ServeHTTP(httptest.NewRecorder(), reqCookie)
+	if tokenEnCtx != "Bearer jwt-123" {
+		t.Errorf("se esperaba Bearer jwt-123 en contexto, se obtuvo %q", tokenEnCtx)
+	}
+
+	// HumaAPI directo para cubrir operaciones registradas en el contrato
+	mux := http.NewServeMux()
+	health := service.NewHealthService(config.ServiceInfo{Name: "Pipeline", Environment: "test"}, func(context.Context) error { return nil })
+	batchSvc := service.NewBatchService(store.NewMemoryBatchStore())
+	_ = NewHumaAPI(mux, Options{PublishDocs: true}, Dependencies{
+		Health:  NewHealthHandler(health),
+		Batches: NewBatchHandler(batchSvc),
+	})
+	for _, ep := range []struct {
+		method string
+		path   string
+		body   string
+		code   int
+	}{
+		{http.MethodGet, "/healthz", "", http.StatusOK},
+		{http.MethodGet, "/readyz", "", http.StatusOK},
+		{http.MethodGet, "/api/health", "", http.StatusOK},
+		{http.MethodPost, "/api/v1/lotes", `{"origen":"OCR","referencia_externa":"r1","registros":[{"folio":"F-10","nombre":"Ana","correo":"ana@example.com"}]}`, http.StatusCreated},
+		{http.MethodGet, "/api/v1/lotes?pagina=1&tamano_pagina=10", "", http.StatusOK},
+		{http.MethodGet, "/api/v1/registros?pagina=1&tamano_pagina=10", "", http.StatusOK},
+		{http.MethodGet, "/api/v1/mocks/datos-sucios?cantidad=2&semilla=3", "", http.StatusOK},
+	} {
+		req := httptest.NewRequest(ep.method, ep.path, strings.NewReader(ep.body))
+		if ep.body != "" {
+			req.Header.Set("Content-Type", "application/json")
+		}
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+		if w.Code != ep.code {
+			t.Errorf("Huma %s %s: código %d, se esperaba %d (%s)", ep.method, ep.path, w.Code, ep.code, w.Body.String())
+		}
+	}
+}

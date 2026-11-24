@@ -60,4 +60,3 @@ func AuthTokenFromContext(ctx context.Context) string {
 	}
 	return ""
 }
-

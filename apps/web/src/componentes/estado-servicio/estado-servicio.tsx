@@ -28,14 +28,25 @@ export function EstadoServicio({ apiBaseUrl }: EstadoServicioProps) {
   return (
     <div className="estado-servicio-widget">
       <div className="header-actions" style={{ marginBottom: '1rem', justifyContent: 'flex-end' }}>
-        <button className="btn-refresh" type="button" onClick={() => void checkHealth()} disabled={loading}>
+        <button
+          className="btn-refresh"
+          type="button"
+          onClick={() => void checkHealth()}
+          disabled={loading}
+        >
           {loading ? 'Verificando...' : 'Revisar Estado'}
         </button>
       </div>
 
       <section className={`banner ${overallStatusClass}`} aria-live="polite">
         <div className="banner-icon">
-          {loading ? <span>⏳</span> : health?.status === 'healthy' ? <span>✓</span> : <span>!</span>}
+          {loading ? (
+            <span>⏳</span>
+          ) : health?.status === 'healthy' ? (
+            <span>✓</span>
+          ) : (
+            <span>!</span>
+          )}
         </div>
         <div className="banner-body">
           <h2>{bannerTitle}</h2>
@@ -54,7 +65,7 @@ export function EstadoServicio({ apiBaseUrl }: EstadoServicioProps) {
             <div className="card-icon icon-go">Go</div>
             <div>
               <h3>Backend API</h3>
-              <p className="card-subtitle">Go 1.26.5 • Huma v2 OpenAPI 3.1</p>
+              <p className="card-subtitle">Go 1.26.11 • Huma v2 OpenAPI 3.1</p>
             </div>
             <span className={`status-pill ${backendConnected ? 'pill-ok' : 'pill-err'}`}>
               {backendConnected ? 'ONLINE' : 'OFFLINE'}
@@ -106,7 +117,7 @@ export function EstadoServicio({ apiBaseUrl }: EstadoServicioProps) {
             <div className="card-icon icon-react">UI</div>
             <div>
               <h3>Microcomponentes</h3>
-              <p className="card-subtitle">React 19.2.8 • Vite 8.1.5</p>
+              <p className="card-subtitle">React 19.2.8 • Vite 8.1.6</p>
             </div>
             <span className="status-pill pill-ok">ACTIVO</span>
           </div>
@@ -129,4 +140,3 @@ export function EstadoServicio({ apiBaseUrl }: EstadoServicioProps) {
     </div>
   )
 }
-

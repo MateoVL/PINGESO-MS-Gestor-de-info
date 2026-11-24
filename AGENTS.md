@@ -1,6 +1,6 @@
 ## 1. Introducción
-**Regla general.** Lo que este documento marca como obligatorio lo verifica el pipeline. Un PR que no pasa el pipeline no se integra, sin excepciones manuales.
 
+**Regla general.** Lo que este documento marca como obligatorio lo verifica el pipeline. Un PR que no pasa el pipeline no se integra, sin excepciones manuales.
 
 ## 2. Arquitectura y contrato API
 
@@ -33,7 +33,6 @@ El contrato se publica antes que la lógica. Con Huma el contrato nace de los st
 
 En `API_ENV=dev` cada servicio sirve su documentación interactiva en `/api/docs`.
 
-
 ## 3. Stack tecnológico y estructura de repositorio
 
 Todos los servicios parten de la plantilla base: mismo stack, mismas versiones, misma estructura. Cambiar una pieza del stack requiere aprobación del jefe de proyecto y queda registrado aquí.
@@ -44,55 +43,55 @@ Las versiones de abajo son exactas, sin rangos. Subir una versión es un PR prop
 
 ### Backend (Go)
 
-| Componente | Versión | Dónde se fija | Uso |
-| --- | --- | --- | --- |
-| Go (toolchain) | 1.26.5 | `go.mod`: `go 1.26.0` + `toolchain go1.26.5` y la imagen de build | Todos |
-| `github.com/danielgtaylor/huma/v2` | v2.34.1 | `go.mod` | HTTP + OpenAPI 3.1 |
-| `github.com/jackc/pgx/v5` | v5.10.0 | `go.mod` | Driver PostgreSQL |
-| `github.com/sqlc-dev/sqlc` | v1.29.0 | `Makefile` (`go run ...@v1.29.0`) | Generación de queries |
-| `github.com/pressly/goose/v3` | v3.24.1 | `go.mod`, `Makefile`, `Dockerfile.migrate` | Migraciones |
-| `github.com/riverqueue/river` (+ `riverpgxv5`, `rivertype`) | v0.40.0 | `go.mod` | Jobs, solo si el servicio los usa |
-| `github.com/golang-jwt/jwt/v5` | v5.3.1 | `go.mod` | Emisión (servicio de identidad) y validación de JWT |
-| `github.com/MicahParks/keyfunc/v3` | v3.9.1 | `go.mod` | Lectura y caché del JWKS |
-| `golang.org/x/crypto` | v0.54.0 | `go.mod` | Hash de contraseñas, solo servicio de identidad |
-| `github.com/oapi-codegen/oapi-codegen/v2` | v2.8.2 | `Makefile` (`go run ...@v2.8.2`) | Cliente Go de servicios externos |
-| `github.com/testcontainers/testcontainers-go/modules/postgres` | v0.43.0 | `go.mod` | PostgreSQL real en pruebas |
-| `github.com/wneessen/go-mail` | v0.8.1 | `go.mod` | SMTP, solo si el servicio envía correo |
+| Componente                                                     | Versión | Dónde se fija                                                      | Uso                                                 |
+| -------------------------------------------------------------- | ------- | ------------------------------------------------------------------ | --------------------------------------------------- |
+| Go (toolchain)                                                 | 1.26.11 | `go.mod`: `go 1.26.0` + `toolchain go1.26.11` y la imagen de build | Todos                                               |
+| `github.com/danielgtaylor/huma/v2`                             | v2.34.1 | `go.mod`                                                           | HTTP + OpenAPI 3.1                                  |
+| `github.com/jackc/pgx/v5`                                      | v5.10.0 | `go.mod`                                                           | Driver PostgreSQL                                   |
+| `github.com/sqlc-dev/sqlc`                                     | v1.29.0 | `Makefile` (`go run ...@v1.29.0`)                                  | Generación de queries                               |
+| `github.com/pressly/goose/v3`                                  | v3.24.1 | `go.mod`, `Makefile`, `Dockerfile.migrate`                         | Migraciones                                         |
+| `github.com/riverqueue/river` (+ `riverpgxv5`, `rivertype`)    | v0.40.0 | `go.mod`                                                           | Jobs, solo si el servicio los usa                   |
+| `github.com/golang-jwt/jwt/v5`                                 | v5.3.1  | `go.mod`                                                           | Emisión (servicio de identidad) y validación de JWT |
+| `github.com/MicahParks/keyfunc/v3`                             | v3.9.1  | `go.mod`                                                           | Lectura y caché del JWKS                            |
+| `golang.org/x/crypto`                                          | v0.55.0 | `go.mod`                                                           | Hash de contraseñas, solo servicio de identidad     |
+| `github.com/oapi-codegen/oapi-codegen/v2`                      | v2.8.2  | `Makefile` (`go run ...@v2.8.2`)                                   | Cliente Go de servicios externos                    |
+| `github.com/testcontainers/testcontainers-go/modules/postgres` | v0.43.0 | `go.mod`                                                           | PostgreSQL real en pruebas                          |
+| `github.com/wneessen/go-mail`                                  | v0.8.1  | `go.mod`                                                           | SMTP, solo si el servicio envía correo              |
 
 ### Frontend
 
-| Componente | Versión | Dónde se fija |
-| --- | --- | --- |
-| Node.js | 22.22.0 | `.nvmrc` y `engines` de `package.json` y la imagen de build |
-| pnpm | 10.13.1 | `packageManager` de `package.json` |
-| react / react-dom | 19.2.8 | catalog de `pnpm-workspace.yaml` |
-| typescript | 6.0.3 | catalog |
-| vite | 8.1.5 | catalog |
-| @vitejs/plugin-react | 6.0.4 | `apps/web/package.json` |
-| tailwindcss / @tailwindcss/vite | 4.3.3 | `apps/web/package.json` |
-| @base-ui/react (shadcn, estilo `base-nova`) | 1.6.0 | `apps/web/package.json`, `components.json` |
-| react-router | 8.3.0 | `apps/web/package.json` |
-| @tanstack/react-query | 5.101.4 | `apps/web/package.json` |
-| react-hook-form | 7.83.0 | `apps/web/package.json` |
-| openapi-fetch | 0.15.2 | `apps/web/package.json` |
-| openapi-typescript | 7.13.0 | `apps/web/package.json` |
-| msw | 2.15.0 | `apps/web/package.json` |
-| vitest | 4.1.10 | `apps/web/package.json` |
-| @playwright/test | 1.62.0 | `apps/web/package.json` |
-| oxlint | 1.75.0 | `package.json` raíz |
-| prettier / prettier-plugin-tailwindcss | 3.9.6 / 0.8.1 | `package.json` raíz |
-| lefthook | 2.1.10 | `package.json` raíz |
+| Componente                                  | Versión       | Dónde se fija                                               |
+| ------------------------------------------- | ------------- | ----------------------------------------------------------- |
+| Node.js                                     | 22.22.0       | `.nvmrc` y `engines` de `package.json` y la imagen de build |
+| pnpm                                        | 10.13.1       | `packageManager` de `package.json`                          |
+| react / react-dom                           | 19.2.8        | catalog de `pnpm-workspace.yaml`                            |
+| typescript                                  | 6.0.3         | catalog                                                     |
+| vite                                        | 8.1.6         | catalog                                                     |
+| @vitejs/plugin-react                        | 6.0.4         | `apps/web/package.json`                                     |
+| tailwindcss / @tailwindcss/vite             | 4.3.3         | `apps/web/package.json`                                     |
+| @base-ui/react (shadcn, estilo `base-nova`) | 1.6.0         | `apps/web/package.json`, `components.json`                  |
+| react-router                                | 8.3.0         | `apps/web/package.json`                                     |
+| @tanstack/react-query                       | 5.101.4       | `apps/web/package.json`                                     |
+| react-hook-form                             | 7.83.0        | `apps/web/package.json`                                     |
+| openapi-fetch                               | 0.15.2        | `apps/web/package.json`                                     |
+| openapi-typescript                          | 7.13.0        | `apps/web/package.json`                                     |
+| msw                                         | 2.15.0        | `apps/web/package.json`                                     |
+| vitest                                      | 4.1.10        | `apps/web/package.json`                                     |
+| @playwright/test                            | 1.62.0        | `apps/web/package.json`                                     |
+| oxlint                                      | 1.75.0        | `package.json` raíz                                         |
+| prettier / prettier-plugin-tailwindcss      | 3.9.6 / 0.8.1 | `package.json` raíz                                         |
+| lefthook                                    | 2.1.10        | `package.json` raíz                                         |
 
 ### Imágenes base y servicios de Compose
 
-| Imagen | Tag | Digest |
-| --- | --- | --- |
-| golang (build) | `1.26.5-alpine3.23` | `sha256:622e56dbc11a8cfe87cafa2331e9a201877271cbff918af53d3be315f3da88cc` |
-| node (build web) | `22.22.0-alpine3.23` | `sha256:e4bf2a82ad0a4037d28035ae71529873c069b13eb0455466ae0bc13363826e34` |
-| distroless (runtime api y web) | `static-debian13:nonroot` | `sha256:f7f8f729987ad0fdf6b05eeeae94b26e6a0f613bdf46feea7fc40f7bd72953e6` |
-| alpine (runtime migrate) | `3.23.7` | Se fija en el Hito 0 |
-| postgres | `17.11` | Se fija en el Hito 0 |
-| axllent/mailpit (solo perfil dev) | `v1.31.3` | Se fija en el Hito 0 |
+| Imagen                            | Tag                       | Digest                                                                    |
+| --------------------------------- | ------------------------- | ------------------------------------------------------------------------- |
+| golang (build)                    | `1.26.11-alpine3.23`      | `sha256:23f198931d4bd83b4f5a613bd75656257ae8bf832dcbc2db80e1050b5219ca2a` |
+| node (build web)                  | `22.22.0-alpine3.23`      | `sha256:e4bf2a82ad0a4037d28035ae71529873c069b13eb0455466ae0bc13363826e34` |
+| distroless (runtime api y web)    | `static-debian13:nonroot` | `sha256:f7f8f729987ad0fdf6b05eeeae94b26e6a0f613bdf46feea7fc40f7bd72953e6` |
+| alpine (runtime migrate)          | `3.23.7`                  | `sha256:ff7f0c727dd796aa36787bfcd9a64bf35a6ce72a73451b3359fde849b6703d63` |
+| postgres                          | `17.11`                   | `sha256:ff87138949ad9a46f32ff23bd6852b52ce024a13dffe9b4087be98292cdd3b4f` |
+| axllent/mailpit (solo perfil dev) | `v1.31.3`                 | `sha256:ed9b00c609e77e99c79b93f1178255ebc271868920f2c69a8d166bd5634ed10d` |
 
 Para obtener un digest: `docker buildx imagetools inspect postgres:17.11 --format '{{json .Manifest.Digest}}'`. Se usa el digest del índice multi-arquitectura, no el de una plataforma.
 
@@ -150,23 +149,23 @@ Cada servicio publica dos imágenes, `api` y `migrate`, y su paquete de microcom
 
 ### Reglas obligatorias (las verifican Hadolint, Dockle y Trivy)
 
-| Regla | Cómo se cumple |
-| --- | --- |
-| Base fijada por versión y digest | `golang:1.26.5-alpine3.23@sha256:…`, nunca `latest` |
-| Runtime mínimo | `gcr.io/distroless/static-debian13:nonroot` para api y web |
-| Usuario no root | `USER nonroot:nonroot`, archivos con `--chown` |
-| Binario reproducible | `CGO_ENABLED=0`, `-trimpath`, `-buildvcs=false`, `-ldflags="-s -w -X main.version=$VERSION"` |
-| Caché de dependencias | `RUN --mount=type=cache` para módulos Go y store de pnpm |
-| Multi-arquitectura | `--platform=$BUILDPLATFORM` + `TARGETOS`/`TARGETARCH` |
-| Sin secretos en la imagen | `.dockerignore` excluye `.env*`, `.git`, `node_modules`. Ningún secreto en `ARG` ni en `VITE_*` |
-| Un puerto | Todo escucha en `8080` dentro del contenedor |
-| Healthcheck | API: `GET /healthz` (vivo) y `GET /readyz` (con PostgreSQL). Web: `GET /healthz` |
+| Regla                            | Cómo se cumple                                                                                  |
+| -------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Base fijada por versión y digest | `golang:1.26.11-alpine3.23@sha256:…`, nunca `latest`                                            |
+| Runtime mínimo                   | `gcr.io/distroless/static-debian13:nonroot` para api y web                                      |
+| Usuario no root                  | `USER nonroot:nonroot`, archivos con `--chown`                                                  |
+| Binario reproducible             | `CGO_ENABLED=0`, `-trimpath`, `-buildvcs=false`, `-ldflags="-s -w -X main.version=$VERSION"`    |
+| Caché de dependencias            | `RUN --mount=type=cache` para módulos Go y store de pnpm                                        |
+| Multi-arquitectura               | `--platform=$BUILDPLATFORM` + `TARGETOS`/`TARGETARCH`                                           |
+| Sin secretos en la imagen        | `.dockerignore` excluye `.env*`, `.git`, `node_modules`. Ningún secreto en `ARG` ni en `VITE_*` |
+| Un puerto                        | Todo escucha en `8080` dentro del contenedor                                                    |
+| Healthcheck                      | API: `GET /healthz` (vivo) y `GET /readyz` (con PostgreSQL). Web: `GET /healthz`                |
 
 ### API (`apps/api/Dockerfile`)
 
 ```dockerfile
 # syntax=docker/dockerfile:1.7
-FROM --platform=$BUILDPLATFORM golang:1.26.5-alpine3.23@sha256:622e56dbc11a8cfe87cafa2331e9a201877271cbff918af53d3be315f3da88cc AS build
+FROM --platform=$BUILDPLATFORM golang:1.26.11-alpine3.23@sha256:23f198931d4bd83b4f5a613bd75656257ae8bf832dcbc2db80e1050b5219ca2a AS build
 WORKDIR /src
 COPY apps/api/go.mod apps/api/go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod go mod download
@@ -207,7 +206,6 @@ Sirve la app de desarrollo local de cada repo y es la plantilla para la app que 
 
 Cada servicio recibe un número N en el documento de componentes de su sección y usa un rango de puertos locales propio, para que un desarrollador pueda levantar varios a la vez: `51N0` (web) y `51N1` (api). Ejemplo: el servicio 2 usa 5120 y 5121.
 
-
 ## 5. Datos, migraciones, configuración y secretos
 
 Cada servicio tiene su propia base PostgreSQL y nadie más se conecta a ella. Si un servicio necesita datos de otro, los pide a su API. Un `JOIN` contra la base de otro servicio se rechaza.
@@ -224,15 +222,15 @@ Cada servicio tiene su propia base PostgreSQL y nadie más se conecta a ella. Si
 
 Toda la configuración entra por variables de entorno, se valida al arrancar y el proceso termina si falta una obligatoria. `.env.example` lista todas las variables con valores `replace-with-*` y `.env` nunca se commitea.
 
-| Variable | Uso | Obligatoria |
-| --- | --- | --- |
-| `API_PORT` | Puerto interno, siempre 8080 | Sí |
-| `API_ENV` | `dev`, `test` o `prod`. En `prod` no se publican `/api/docs` ni el spec | Sí |
-| `DATABASE_URL` | Conexión a la base propia. Dentro de Compose apunta al nombre del servicio, no a `localhost` | Sí |
-| `AUTH_JWKS_URL` | Llaves públicas del servicio de identidad para validar tokens | Sí, salvo el servicio de identidad |
-| `<SERVICIO>_URL` | URL de cada servicio del que se depende (ej. `IDENTIDAD_URL`) | Según dependencias |
-| `FRONTEND_URL` | Origen permitido y base de enlaces | Sí |
-| `TZ` | `America/Santiago` | Sí |
+| Variable         | Uso                                                                                          | Obligatoria                        |
+| ---------------- | -------------------------------------------------------------------------------------------- | ---------------------------------- |
+| `API_PORT`       | Puerto interno, siempre 8080                                                                 | Sí                                 |
+| `API_ENV`        | `dev`, `test` o `prod`. En `prod` no se publican `/api/docs` ni el spec                      | Sí                                 |
+| `DATABASE_URL`   | Conexión a la base propia. Dentro de Compose apunta al nombre del servicio, no a `localhost` | Sí                                 |
+| `AUTH_JWKS_URL`  | Llaves públicas del servicio de identidad para validar tokens                                | Sí, salvo el servicio de identidad |
+| `<SERVICIO>_URL` | URL de cada servicio del que se depende (ej. `IDENTIDAD_URL`)                                | Según dependencias                 |
+| `FRONTEND_URL`   | Origen permitido y base de enlaces                                                           | Sí                                 |
+| `TZ`             | `America/Santiago`                                                                           | Sí                                 |
 
 ### Secretos
 
@@ -240,3 +238,280 @@ Toda la configuración entra por variables de entorno, se valida al arrancar y e
 - En CI los secretos van en GitHub Actions Secrets. En local van en un `.env` fuera del control de versiones.
 - Gitleaks bloquea el commit si detecta un secreto (sección 6). Si uno se filtra igual, se rota de inmediato: borrarlo del historial no basta.
 - La sesión viaja en cookie `HttpOnly`, `Secure`, `SameSite=Lax`. `localStorage` y `sessionStorage` están prohibidos en todo el frontend.
+
+## 6. Seguridad y shift-left
+
+Cada control corre lo más temprano posible: lo que se puede detectar en el editor no espera al commit, y lo que se puede detectar en el commit no espera al pipeline. El pipeline repite todo lo anterior, porque los hooks locales se pueden saltar.
+
+### Controles por etapa
+
+| Etapa            | Herramienta                                                        | Qué detecta                                                                  | Bloquea                     |
+| ---------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------- | --------------------------- |
+| Editor           | `.editorconfig`, gofmt, Prettier, oxlint                           | Formato y reglas de código                                                   | No (aviso)                  |
+| pre-commit       | Prettier, oxlint `--deny-warnings`, gofmt, `go vet`                | Formato, `fetch` fuera de `*.api.ts`, `localStorage`, imports entre features | Sí                          |
+| pre-commit       | Gitleaks `protect --staged`                                        | Secretos en lo que se va a commitear                                         | Sí                          |
+| pre-push         | `pnpm typecheck`, `pnpm test`, `go test ./...`                     | Tipos y pruebas                                                              | Sí                          |
+| CI: código       | Lint, typecheck, build, e2e con golden                             | Regresiones funcionales                                                      | Sí                          |
+| CI: contrato     | `git diff --exit-code` tras `pnpm codegen` y oasdiff contra `main` | Contrato desactualizado o cambio incompatible                                | Sí                          |
+| CI: dependencias | govulncheck, `pnpm audit --audit-level high`                       | Vulnerabilidades alcanzables en Go y npm                                     | Sí                          |
+| CI: repo         | `trivy fs --scanners vuln,misconfig,secret`                        | CVE en lockfiles, Dockerfile y Compose mal configurados, secretos            | Sí, HIGH/CRITICAL           |
+| CI: Dockerfile   | Hadolint                                                           | Malas prácticas en Dockerfiles                                               | Sí, nivel `error`           |
+| CI: calidad      | SonarQube + Quality Gate                                           | Bugs, vulnerabilidades, code smells, cobertura en código nuevo               | Sí                          |
+| CI: imagen       | `trivy image`, Dockle                                              | CVE del runtime, root, secretos en capas                                     | Sí, HIGH/CRITICAL           |
+| CI: publicación  | SBOM CycloneDX (Trivy), firma con Cosign                           | Trazabilidad de lo publicado                                                 | No, se adjunta a la release |
+
+### Hooks locales (`lefthook.yml`)
+
+```yaml
+pre-commit:
+  parallel: true
+  commands:
+    format:
+      glob: '*.{js,ts,jsx,tsx,json,css,md,yml,yaml}'
+      run: pnpm exec prettier --write --ignore-unknown {staged_files}
+      stage_fixed: true
+    lint:
+      run: pnpm exec oxlint --deny-warnings
+    go-fmt:
+      glob: '*.go'
+      run: cd apps/api && test -z "$(gofmt -l .)" && go vet ./...
+    secretos:
+      run: gitleaks protect --staged --redact --no-banner
+
+pre-push:
+  parallel: true
+  commands:
+    typecheck:
+      run: pnpm typecheck
+    test:
+      run: pnpm test
+    test-api:
+      run: pnpm test:api
+```
+
+`.npmrc` tiene `ignore-scripts=true`, así que después de `pnpm install` hay que correr `pnpm exec lefthook install` a mano. Sin eso no hay hooks.
+
+### Pipeline de CI (`.github/workflows/ci.yml`)
+
+Corre en cada PR y en cada push a `main`. Los jobs `calidad`, `seguridad` e `imagen` son checks requeridos en la protección de rama.
+
+```yaml
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  TRIVY_VERSION: v0.76.1
+  GOVULNCHECK_VERSION: v1.9.0
+  OASDIFF_VERSION: v1.35.0
+  DOCKLE_VERSION: v0.4.15
+
+jobs:
+  calidad:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { fetch-depth: 0 }
+      - uses: pnpm/action-setup@d9184bf108216479bc5a137cc391f4d7b14c870b # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: { node-version-file: .nvmrc, cache: pnpm }
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with: { go-version-file: apps/api/go.mod }
+      - run: pnpm install --frozen-lockfile
+      - run: cd apps/api && go mod verify
+      - run: pnpm verify
+      - run: pnpm codegen && git diff --exit-code
+      - name: contrato compatible con main
+        run: |
+          git show origin/main:contracts/openapi.yaml > /tmp/base.yaml
+          go run github.com/oasdiff/oasdiff@${OASDIFF_VERSION} breaking /tmp/base.yaml contracts/openapi.yaml --fail-on ERR
+      - run: pnpm test:e2e:api # binario con -cover, deja cobertura en GOCOVERDIR
+      - uses: SonarSource/sonarqube-scan-action@4d1dc0c91ee400dcf8a6dddf2f705ac36542e304 # v8.4.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      - uses: SonarSource/sonarqube-quality-gate-action@7a5fffe8e523c40e0c740b6bc2712ab503e52efa # v1.2.1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  seguridad:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with: { go-version-file: apps/api/go.mod }
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITLEAKS_VERSION: 8.30.1
+      - run: cd apps/api && go run golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION} ./...
+      - uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0 (hadolint v2.15.1)
+        with: { recursive: true, failure-threshold: error }
+      - uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          version: ${{ env.TRIVY_VERSION }}
+          scan-type: fs
+          scanners: vuln,misconfig,secret
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
+  imagen:
+    needs: [calidad, seguridad]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: docker build --pull -f apps/api/Dockerfile --build-arg VERSION=${GITHUB_SHA::7} -t api:ci .
+      - run: docker build --pull -f apps/web/Dockerfile -t web:ci .
+      - uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          {
+            version: '${{ env.TRIVY_VERSION }}',
+            image-ref: api:ci,
+            severity: 'HIGH,CRITICAL',
+            ignore-unfixed: true,
+            exit-code: '1',
+          }
+      - uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          {
+            version: '${{ env.TRIVY_VERSION }}',
+            image-ref: web:ci,
+            severity: 'HIGH,CRITICAL',
+            ignore-unfixed: true,
+            exit-code: '1',
+          }
+      - run: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock goodwithtech/dockle:${DOCKLE_VERSION} --exit-code 1 --exit-level warn api:ci
+```
+
+Cada action va fijada por SHA de commit con su versión en comentario. Un tag se puede mover, un SHA no.
+
+### Versiones de herramientas de seguridad y CI
+
+| Herramienta                               | Versión               | Fijada en                                                  |
+| ----------------------------------------- | --------------------- | ---------------------------------------------------------- |
+| Trivy                                     | v0.76.1               | `TRIVY_VERSION` del workflow, y local con la misma versión |
+| aquasecurity/trivy-action                 | v0.36.0 (`a9c7b0f0…`) | workflow                                                   |
+| Gitleaks                                  | v8.30.1               | `GITLEAKS_VERSION` del workflow, y local para el hook      |
+| gitleaks/gitleaks-action                  | v3.0.0 (`e0c47f4f…`)  | workflow                                                   |
+| Hadolint (vía hadolint-action v3.5.0)     | v2.15.1               | workflow                                                   |
+| Dockle                                    | v0.4.15               | `DOCKLE_VERSION` del workflow                              |
+| govulncheck (`golang.org/x/vuln`)         | v1.9.0                | `GOVULNCHECK_VERSION` del workflow                         |
+| oasdiff                                   | v1.35.0               | `OASDIFF_VERSION` del workflow                             |
+| Prism (`@stoplight/prism-cli`)            | 5.16.0                | `devDependencies` de `apps/web`                            |
+| Cosign                                    | v3.1.4                | job de publicación                                         |
+| SonarSource/sonarqube-scan-action         | v8.4.0 (`4d1dc0c9…`)  | workflow                                                   |
+| SonarSource/sonarqube-quality-gate-action | v1.2.1 (`7a5fffe8…`)  | workflow                                                   |
+| actions/checkout                          | v7.0.1 (`3d3c42e5…`)  | workflow                                                   |
+| actions/setup-go                          | v7.0.0 (`b7ad1dad…`)  | workflow                                                   |
+| actions/setup-node                        | v7.1.0 (`949feb24…`)  | workflow                                                   |
+| pnpm/action-setup                         | v6.1.0 (`d9184bf1…`)  | workflow                                                   |
+| Runner                                    | `ubuntu-24.04`        | workflow (no `ubuntu-latest`)                              |
+
+### Umbrales
+
+- **Trivy:** 0 hallazgos HIGH o CRITICAL con fix disponible, en repo e imágenes. Una excepción va en `.trivyignore.yaml` con el CVE, el motivo y una fecha de revisión, aprobada por el jefe de proyecto.
+- **SonarQube (Quality Gate sobre código nuevo):** 0 bugs y 0 vulnerabilidades nuevas, 100% de security hotspots revisados, duplicación bajo 3% y cobertura de al menos 60%. La cobertura sale de los e2e: la API se compila con `go build -cover` y el reporte se convierte con `go tool covdata textfmt`.
+- **Gitleaks:** cero hallazgos. No hay excepciones por archivo.
+
+### Controles de aplicación
+
+- Autenticación: El servicio de identidad emite un JWT firmado (EdDSA o RS256) en cookie `HttpOnly`. Los demás servicios lo validan con `AUTH_JWKS_URL`. Nadie comparte la llave privada.
+- Autorización: cada endpoint declara su permiso (ej. `<recurso>:administrar`, `<recurso>:operar`) y existe una matriz de acceso probada por rol en `acceso_test.go`.
+- Toda entrada se valida en el contrato (tipos, `minLength`, `maximum`, `pattern`). Huma rechaza lo que no cumple antes de llegar al service.
+- Operaciones que mueven cupos, inventario o dinero aceptan `Idempotency-Key`, para que un reintento no descuente dos veces.
+- Los errores siguen RFC 9457 (`application/problem+json`) y nunca exponen trazas, SQL ni rutas internas.
+
+## 7. Escáneres obligatorios: SonarQube y Trivy
+
+Cada repo corre los dos escáneres en cada PR y ninguno reemplaza al otro. SonarQube mira el código propio y Trivy mira todo lo que el código trae de afuera.
+
+### Por qué dos escáneres
+
+| Escáner   | Analiza                                                         | Detecta                                                                                          | No cubre en esta configuración                          |
+| --------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------- |
+| SonarQube | Código propio de `apps/api` y `apps/web`, pruebas y cobertura   | Bugs, vulnerabilidades, code smells, duplicación, security hotspots y cobertura del código nuevo | CVE de dependencias, imagen base, Dockerfile y secretos |
+| Trivy     | Dependencias y lockfiles, Dockerfiles, Compose, imágenes y SBOM | CVE con corrección disponible, malas configuraciones y secretos embebidos                        | Lógica del código, calidad y cobertura                  |
+
+Un CVE en una dependencia no lo detecta el análisis de código. Un error de lógica o una consulta SQL mal armada no lo detecta el escaneo de dependencias e imágenes.
+
+### Qué debe solicitar cada grupo
+
+La solicitud se hace al jefe de proyecto antes de cerrar el Hito 0. Sin proyecto, token y jobs configurados no hay Quality Gate ni evidencia para el hito.
+
+| Solicitud                                               | Cuándo              | Evidencia                                                         |
+| ------------------------------------------------------- | ------------------- | ----------------------------------------------------------------- |
+| Proyecto SonarQube con clave estable (ej. `<servicio>`) | Antes del primer PR | URL del proyecto                                                  |
+| Token de análisis y `SONAR_HOST_URL`                    | Antes del primer PR | Secrets `SONAR_TOKEN` y `SONAR_HOST_URL` cargados en el repo      |
+| `sonar-project.properties` en la raíz                   | Antes del primer PR | Archivo commiteado                                                |
+| Jobs `calidad`, `seguridad` e `imagen` activos          | Hito 0              | Pipeline en verde y checks requeridos en `main`                   |
+| Excepción de Trivy, si aplica                           | Antes del merge     | `.trivyignore.yaml` con CVE, motivo y fecha de revisión, aprobado |
+
+Para la solicitud basta indicar servicio, repo, clave del proyecto SonarQube, URL de la instancia y responsable del grupo. El token es un secreto: no se comparte por chat ni por correo y se carga directo como secret del repositorio.
+
+### SonarQube: cómo se habilita y cómo se ejecuta
+
+1. Crear o solicitar el proyecto con una clave estable, por ejemplo `<servicio>`. La clave no cambia entre ramas ni entre hitos.
+2. Generar un token de análisis y guardarlo como `SONAR_TOKEN`, y la URL de la instancia como `SONAR_HOST_URL`. Ambos van en GitHub Actions Secrets, nunca en el repo.
+3. Definir "New Code" antes del primer análisis. Sin esa definición, el Quality Gate no mide el código nuevo.
+4. Commitear un `sonar-project.properties` en la raíz con `sonar.projectKey`, `sonar.sources` y las rutas de cobertura. Si las pruebas viven en carpetas propias, agregar `sonar.tests` sin solapar con `sources`.
+5. Generar la cobertura que SonarQube va a leer. En Go sale de los e2e: compilar la API con `go build -cover`, ejecutar las pruebas con `GOCOVERDIR` y convertir el resultado con `go tool covdata textfmt -i "$GOCOVERDIR" -o coverage.out`. En el front, vitest emite el `lcov`. Sin reporte de cobertura, el Quality Gate no puede cumplir el 60% de código nuevo.
+6. Agregar el scan y el Quality Gate al job `calidad` (sección 6). La action del gate falla si el gate está rojo, y esa falla es la que bloquea el merge.
+7. Antes de abrir el PR, correr el escáner local con las mismas propiedades (comando abajo). El token va en una variable de entorno local, no en el archivo.
+8. Si el gate falla, se corrige la causa. No se baja el umbral, no se excluye un archivo completo y no se marca un hotspot como seguro sin leerlo.
+
+```properties
+sonar.projectKey=<servicio>
+sonar.sources=apps/api,apps/web/src
+sonar.go.coverage.reportPaths=coverage.out
+sonar.javascript.lcov.reportPaths=apps/web/coverage/lcov.info
+sonar.exclusions=apps/api/internal/repository/**,apps/web/src/components/ui/**
+```
+
+```bash
+sonar-scanner -Dsonar.host.url="$SONAR_HOST_URL" -Dsonar.token="$SONAR_TOKEN"
+```
+
+### Trivy: cómo se habilita y cómo se ejecuta
+
+Trivy no requiere alta ni token. Se solicita que el repo ejecute los jobs `seguridad` e `imagen` y que la protección de rama los exija. El escaneo se hace siempre con la versión fijada v0.76.1, nunca con `latest`.
+
+1. Job `seguridad`: `trivy fs` sobre el repo con `--scanners vuln,misconfig,secret`, `--severity HIGH,CRITICAL`, `--ignore-unfixed` y `--exit-code 1`. Detecta CVE en `go.sum` y `pnpm-lock.yaml`, malas configuraciones de Dockerfile y Compose, y secretos.
+2. Job `imagen`: construir `api:ci` y `web:ci` y correr `trivy image` sobre cada una. Detecta CVE de la imagen base y de las capas, y secretos embebidos.
+3. Publicación: generar el SBOM CycloneDX y firmar la imagen. No bloquea el merge, pero deja trazabilidad de lo publicado.
+4. Antes del PR, repetir el escaneo local con la misma versión (comandos abajo).
+5. Si hay un hallazgo con corrección disponible, se actualiza la dependencia o la imagen base y se reconstruye. No se baja la severidad ni se ignora el CVE.
+6. Si no hay corrección, `--ignore-unfixed` ya lo deja fuera del bloqueo. Si se quiere dejar registro, se documenta, pero no se agrega una excepción innecesaria.
+7. Una excepción real va en `.trivyignore.yaml` con el CVE, el motivo y una fecha de revisión, aprobada por el jefe de proyecto. Una excepción sin fecha no se acepta.
+
+```bash
+trivy fs --scanners vuln,misconfig,secret --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 .
+docker build -t api:local -f apps/api/Dockerfile .
+trivy image --scanners vuln,secret --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 api:local
+docker build -t web:local -f apps/web/Dockerfile .
+trivy image --scanners vuln,secret --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 web:local
+```
+
+### Cómo leer y cerrar los hallazgos
+
+| Resultado                             | Acción                                                                                  | No hacer                                      |
+| ------------------------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------- |
+| SonarQube con gate rojo               | Corregir el bug o la vulnerabilidad, agregar la prueba que falta o bajar la duplicación | Bajar el umbral o excluir el archivo completo |
+| Security hotspot                      | Revisarlo y justificar la decisión                                                      | Marcarlo como seguro sin leerlo               |
+| Cobertura menor a 60% en código nuevo | Agregar un e2e que ejercite el cambio                                                   | Excluir código nuevo del análisis             |
+| Trivy HIGH/CRITICAL con fix           | Actualizar la dependencia o la imagen base                                              | Ignorar el CVE o bajar la severidad           |
+| Trivy HIGH/CRITICAL sin fix           | No bloquea por `--ignore-unfixed`, dejar registro si aplica                             | Agregar una excepción innecesaria             |
+| Secreto detectado                     | Rotarlo de inmediato y sacarlo del historial                                            | Borrar solo el último commit                  |
+| Falso positivo                        | Excepción con CVE, motivo y fecha                                                       | Excepción permanente o sin aprobación         |
+
+### Evidencia para el Hito 0
+
+- [ ] Proyecto SonarQube creado, con `SONAR_TOKEN` y `SONAR_HOST_URL` cargados como secrets
+- [ ] `sonar-project.properties` commiteado con las rutas de cobertura
+- [ ] Pipeline con los jobs `calidad`, `seguridad` e `imagen` en verde
+- [ ] Enlace al pipeline y al proyecto SonarQube en el README o en la entrega del grupo

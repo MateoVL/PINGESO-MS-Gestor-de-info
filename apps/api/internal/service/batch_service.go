@@ -8,10 +8,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"regexp"
 	"slices"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/mateo/ms-gestor-de-info/apps/api/internal/store"
 )
@@ -26,7 +26,18 @@ const (
 
 const maxAttempts = 5
 
-var emailPattern = regexp.MustCompile(`^[^\s@]+@[^\s@]+\.[^\s@]+$`)
+func isValidEmail(email string) bool {
+	if email == "" || strings.IndexFunc(email, unicode.IsSpace) >= 0 {
+		return false
+	}
+	at := strings.IndexByte(email, '@')
+	if at <= 0 || at != strings.LastIndexByte(email, '@') {
+		return false
+	}
+	domain := email[at+1:]
+	dot := strings.IndexByte(domain, '.')
+	return dot > 0 && !strings.HasPrefix(domain, ".") && !strings.HasSuffix(domain, ".")
+}
 
 type BatchInput struct {
 	Origen            string
@@ -202,7 +213,7 @@ func classify(input []store.RegistroEntrada) ([]store.Registro, []store.Rechazo)
 		if nombre == "" {
 			reasons = append(reasons, ReasonMissingName)
 		}
-		if !emailPattern.MatchString(correo) {
+		if !isValidEmail(correo) {
 			reasons = append(reasons, ReasonInvalidEmail)
 		}
 		if folio != "" && seen[folio] {
@@ -267,4 +278,3 @@ func NewUUID() string {
 	b[8] = (b[8] & 0x3f) | 0x80
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
 }
-

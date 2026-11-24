@@ -12,11 +12,17 @@ import (
 
 type Querier interface {
 	CountLotes(ctx context.Context) (int64, error)
+	CountRegistros(ctx context.Context, arg CountRegistrosParams) (int64, error)
 	CreateLote(ctx context.Context, arg CreateLoteParams) (Lote, error)
+	CreateRechazo(ctx context.Context, arg CreateRechazoParams) (Rechazo, error)
+	CreateRegistro(ctx context.Context, arg CreateRegistroParams) (Registro, error)
+	FindExistingFolios(ctx context.Context, dollar_1 []string) ([]string, error)
 	GetLoteByID(ctx context.Context, id pgtype.UUID) (Lote, error)
 	GetLoteByIdempotencyKey(ctx context.Context, claveIdempotencia pgtype.Text) (Lote, error)
+	GetRegistroByID(ctx context.Context, id pgtype.UUID) (Registro, error)
 	ListLotes(ctx context.Context, arg ListLotesParams) ([]Lote, error)
+	ListRechazosByLoteID(ctx context.Context, loteID pgtype.UUID) ([]Rechazo, error)
+	ListRegistros(ctx context.Context, arg ListRegistrosParams) ([]Registro, error)
 }
 
 var _ Querier = (*Queries)(nil)
-

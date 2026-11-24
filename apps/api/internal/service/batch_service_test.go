@@ -170,4 +170,3 @@ func TestQueriesAndPagination(t *testing.T) {
 		t.Error("un lote sin rechazos debe devolver [] y no null")
 	}
 }
-

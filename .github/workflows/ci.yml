@@ -1,112 +1,100 @@
-name: CI · Calidad y seguridad
-
+name: ci
 on:
+  pull_request:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
-  workflow_dispatch:
 
 permissions:
   contents: read
 
-defaults:
-  run:
-    shell: bash
+env:
+  TRIVY_VERSION: v0.76.1
+  GOVULNCHECK_VERSION: v1.9.0
+  OASDIFF_VERSION: v1.35.0
+  DOCKLE_VERSION: v0.4.15
 
 jobs:
-  tests:
-    name: Pruebas, Contratos y SonarQube
+  calidad:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { fetch-depth: 0 }
+      - uses: pnpm/action-setup@d9184bf108216479bc5a137cc391f4d7b14c870b # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: { node-version-file: .nvmrc, cache: pnpm }
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
-        with:
-          go-version: '1.26.5'
+          go-version-file: apps/api/go.mod
           cache-dependency-path: apps/api/go.sum
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version-file: '.nvmrc'
-      - name: Activar pnpm 10.13.1
+      - run: pnpm install --frozen-lockfile
+      - run: cd apps/api && go mod verify
+      - run: pnpm verify
+      - run: pnpm codegen && git diff --exit-code
+      - name: contrato compatible con main
         run: |
-          corepack enable
-          corepack prepare pnpm@10.13.1 --activate
-      - name: Verificar dependencias y pruebas de Go
-        working-directory: apps/api
-        run: |
-          go mod verify
-          go test -coverpkg=./... -coverprofile=coverage.out ./...
-      - name: Instalar dependencias con lockfile estricto, lint, pruebas y build de React
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm lint
-          pnpm test:coverage
-          pnpm build
-      - name: Comprobar la configuración de SonarQube
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-        env:
-          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: |
-          if [[ -z "$SONAR_HOST_URL" || -z "$SONAR_TOKEN" ]]; then
-            echo '::error::Configura la variable SONAR_HOST_URL y el secreto SONAR_TOKEN en GitHub Actions.'
-            exit 1
+          if git cat-file -e origin/main:contracts/openapi.yaml 2>/dev/null; then
+            git show origin/main:contracts/openapi.yaml > /tmp/base.yaml
+            go run github.com/oasdiff/oasdiff@${OASDIFF_VERSION} breaking /tmp/base.yaml contracts/openapi.yaml --fail-on ERR
+          else
+            echo "origin/main:contracts/openapi.yaml no existe todavía; se omite comparación inicial."
           fi
-      - name: Analizar Go y React con SonarQube
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-        uses: SonarSource/sonarqube-scan-action@e805d875275f728fac1885b413934be6d7c63f65 # v8.4.1
+      - run: pnpm test:e2e:api
+      - uses: SonarSource/sonarqube-scan-action@4d1dc0c91ee400dcf8a6dddf2f705ac36542e304 # v8.4.0
         env:
-          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      - uses: SonarSource/sonarqube-quality-gate-action@7a5fffe8e523c40e0c740b6bc2712ab503e52efa # v1.2.1
+        env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  security:
-    name: Integración y Trivy
+  seguridad:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
-    env:
-      TRIVY_IMAGE: ghcr.io/aquasecurity/trivy:0.76.2@sha256:8f6bb947dbc528902e11f2f5be52f7b519f6a39d5d148f41166f2040499768fb
-      COMPOSE_PROJECT_NAME: pingeso-hito0
-      POSTGRES_USER: gestor_user
-      POSTGRES_PASSWORD: ci-gestor-password
-      POSTGRES_DB: gestor_info_db
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { fetch-depth: 0 }
+      - uses: pnpm/action-setup@d9184bf108216479bc5a137cc391f4d7b14c870b # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: { node-version-file: .nvmrc }
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          persist-credentials: false
-      - name: Escanear dependencias con Trivy
-        run: |
-          docker run --rm \
-            -v "$GITHUB_WORKSPACE:/src:ro" \
-            -v "$RUNNER_TEMP/trivy-cache:/root/.cache/trivy" \
-            "$TRIVY_IMAGE" fs --scanners vuln --include-dev-deps /src
-      - name: Construir y verificar el entorno
-        run: |
-          docker compose -f docker-compose.prod.yml up -d --build --wait --wait-timeout 120
-          curl --fail --silent --show-error --retry 20 --retry-delay 2 --retry-all-errors \
-            http://127.0.0.1:5120/healthz | jq -e '.status == "ok"'
-          curl --fail --silent --show-error --retry 20 --retry-delay 2 --retry-all-errors \
-            http://127.0.0.1:5121/healthz | jq -e '.status == "ok"'
-          curl --fail --silent --show-error --retry 20 --retry-delay 2 --retry-all-errors \
-            http://127.0.0.1:5121/readyz | jq -e '.status == "healthy" and .database.engine == "PostgreSQL" and .database.connected'
-          curl --fail --silent --show-error --retry 20 --retry-delay 2 --retry-all-errors \
-            http://127.0.0.1:5120/api/health | jq -e '.status == "healthy" and .database.engine == "PostgreSQL" and .database.connected'
-      - name: Escanear imágenes de backend y frontend con Trivy
-        run: |
-          for service in backend frontend; do
-            docker save --output "$RUNNER_TEMP/$service.tar" "$COMPOSE_PROJECT_NAME-$service"
-            docker run --rm \
-              -v "$RUNNER_TEMP/trivy-cache:/root/.cache/trivy" \
-              -v "$RUNNER_TEMP/$service.tar:/image.tar:ro" \
-              "$TRIVY_IMAGE" image --scanners vuln --input /image.tar
-          done
-      - name: Registrar diagnóstico del entorno si falla
-        if: failure()
-        run: docker compose -f docker-compose.prod.yml logs --no-color
-      - name: Detener el entorno de integración
-        if: always()
-        run: docker compose -f docker-compose.prod.yml down
+          go-version-file: apps/api/go.mod
+          cache-dependency-path: apps/api/go.sum
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_VERSION: 8.30.1
+      - run: cd apps/api && go run golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION} ./...
+      - run: pnpm audit --audit-level high
+      - uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0 (hadolint v2.15.1)
+        with: { recursive: true, failure-threshold: error }
+      - uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          version: ${{ env.TRIVY_VERSION }}
+          scan-type: fs
+          scanners: vuln,misconfig,secret
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
 
+  imagen:
+    needs: [calidad, seguridad]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: docker build --pull -f apps/api/Dockerfile --build-arg VERSION=${GITHUB_SHA::7} -t api:ci .
+      - run: docker build --pull -f apps/web/Dockerfile -t web:ci .
+      - uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          version: ${{ env.TRIVY_VERSION }}
+          image-ref: api:ci
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+      - uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          version: ${{ env.TRIVY_VERSION }}
+          image-ref: web:ci
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+      - run: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock goodwithtech/dockle:${DOCKLE_VERSION} --exit-code 1 --exit-level warn api:ci

@@ -157,7 +157,7 @@ local-front: env ## Ejecuta el frontend React localmente en el host con pnpm
 # Mantenimiento y Pruebas
 # ==============================================================================
 test: ## Ejecuta pruebas de Go y React y genera sus reportes de cobertura
-	cd apps/api && go test -coverpkg=./... -coverprofile=coverage.out ./...
+	cd apps/api && go test -coverpkg=./... -coverprofile=coverage.out ./... && cp coverage.out ../../coverage.out
 	pnpm install --frozen-lockfile && pnpm test:coverage
 
 clean: ## Limpia contenedores, redes, volúmenes e imágenes locales del proyecto

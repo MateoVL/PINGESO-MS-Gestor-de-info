@@ -16,17 +16,20 @@ import (
 )
 
 const (
-	RequestIDHeader    = "X-Request-ID"
-	maxRequestIDLength = 64
+	RequestIDHeader      = "X-Request-ID"
+	maxRequestIDLength   = 64
+	problemJSONMediaType = "application/problem+json; charset=utf-8"
+	problemTypeBaseURI   = "https://api.pingeso.cl/problems/"
 )
 
-type ErrorResponse struct {
-	Error ErrorBody `json:"error"`
-}
-
-type ErrorBody struct {
+// ProblemDetails implementa RFC 9457 (application/problem+json) sin exponer trazas, SQL ni rutas internas.
+type ProblemDetails struct {
+	Type      string `json:"type" doc:"URI que identifica el tipo de problema" example:"https://api.pingeso.cl/problems/invalid_data"`
+	Title     string `json:"title" doc:"Resumen corto del tipo de problema" example:"Bad Request"`
+	Status    int    `json:"status" doc:"Código de estado HTTP" example:"400"`
+	Detail    string `json:"detail" doc:"Explicación legible para el usuario" example:"La solicitud contiene datos inválidos"`
+	Instance  string `json:"instance,omitempty" doc:"Ruta de la petición que originó el problema" example:"/api/v1/lotes"`
 	Code      string `json:"code" doc:"Código identificador del error" example:"invalid_data"`
-	Message   string `json:"message" doc:"Mensaje legible para el usuario" example:"La solicitud contiene datos inválidos"`
 	RequestID string `json:"request_id,omitempty" doc:"Identificador de correlación de la petición" example:"550e8400-e29b-41d4-a716-446655440000"`
 	Details   any    `json:"details,omitempty" doc:"Detalles adicionales por campo"`
 }
@@ -75,15 +78,17 @@ func RespondError(w http.ResponseWriter, r *http.Request, err error) {
 	if !errors.As(err, &appErr) {
 		appErr = ErrInternal
 	}
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Content-Type", problemJSONMediaType)
 	w.WriteHeader(appErr.Status)
-	_ = json.NewEncoder(w).Encode(ErrorResponse{
-		Error: ErrorBody{
-			Code:      appErr.Code,
-			Message:   appErr.Message,
-			RequestID: service.RequestIDFromContext(r.Context()),
-			Details:   appErr.Details,
-		},
+	_ = json.NewEncoder(w).Encode(ProblemDetails{
+		Type:      problemTypeBaseURI + appErr.Code,
+		Title:     http.StatusText(appErr.Status),
+		Status:    appErr.Status,
+		Detail:    appErr.Message,
+		Instance:  r.URL.Path,
+		Code:      appErr.Code,
+		RequestID: service.RequestIDFromContext(r.Context()),
+		Details:   appErr.Details,
 	})
 }
 
@@ -95,8 +100,10 @@ func RequestIDMiddleware(next http.Handler) http.Handler {
 		}
 		w.Header().Set(RequestIDHeader, id)
 		ctx := service.WithRequestID(r.Context(), id)
-		if auth := r.Header.Get("Authorization"); auth != "" {
+		if auth := strings.TrimSpace(r.Header.Get("Authorization")); auth != "" {
 			ctx = service.WithAuthToken(ctx, auth)
+		} else if tok := extractToken(r); tok != "" {
+			ctx = service.WithAuthToken(ctx, "Bearer "+tok)
 		}
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
@@ -231,4 +238,3 @@ func isAllowedMethod(method string, allowed ...string) bool {
 	}
 	return false
 }
-

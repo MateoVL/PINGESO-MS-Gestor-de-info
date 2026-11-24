@@ -1,6 +1,8 @@
 package config
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -140,5 +142,50 @@ func TestLoadRejectsMissingOrInvalidMandatoryVariables(t *testing.T) {
 				t.Fatalf("se esperaba un error que mencione %s, se obtuvo: %v", tc.wantMsg, err)
 			}
 		})
+	}
+}
+
+func TestLoadDotEnvAndAppEnvDefaults(t *testing.T) {
+	tmpDir := t.TempDir()
+	envPath := filepath.Join(tmpDir, ".env")
+	content := "# comentario\n\nINVALID_LINE\nDOTENV_TEST_KEY=\"valor-desde-archivo\"\nAPI_PORT=8080\n"
+	if err := os.WriteFile(envPath, []byte(content), 0o600); err != nil {
+		t.Fatalf("escribiendo .env temporal: %v", err)
+	}
+
+	_ = os.Unsetenv("DOTENV_TEST_KEY")
+	t.Cleanup(func() { _ = os.Unsetenv("DOTENV_TEST_KEY") })
+	loadDotEnv(envPath)
+	if got := os.Getenv("DOTENV_TEST_KEY"); got != "valor-desde-archivo" {
+		t.Fatalf("loadDotEnv no cargó DOTENV_TEST_KEY: %q", got)
+	}
+
+	// No debe sobrescribir una variable ya existente
+	t.Setenv("DOTENV_TEST_KEY", "valor-existente")
+	loadDotEnv(envPath)
+	if got := os.Getenv("DOTENV_TEST_KEY"); got != "valor-existente" {
+		t.Fatalf("loadDotEnv sobrescribió variable existente: %q", got)
+	}
+
+	// Inferencia de AppEnv según API_ENV y deduplicación de FRONTEND_URL en CORS_ALLOWED_ORIGINS
+	for _, tc := range []struct {
+		apiEnv  string
+		wantEnv string
+	}{
+		{"prod", "production"},
+		{"test", "test"},
+		{"dev", "development"},
+	} {
+		setValidEnv(t)
+		t.Setenv("APP_ENV", "")
+		t.Setenv("API_ENV", tc.apiEnv)
+		t.Setenv("CORS_ALLOWED_ORIGINS", "http://localhost:5120,http://127.0.0.1:5120")
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("Load con API_ENV=%s falló: %v", tc.apiEnv, err)
+		}
+		if cfg.AppEnv != tc.wantEnv {
+			t.Errorf("API_ENV=%s: AppEnv=%q, se esperaba %q", tc.apiEnv, cfg.AppEnv, tc.wantEnv)
+		}
 	}
 }

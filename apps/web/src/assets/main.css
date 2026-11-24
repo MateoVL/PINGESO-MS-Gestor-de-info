@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 :root {
   --bg-primary: #0a0e17;
@@ -222,9 +222,18 @@ body {
   font-size: 0.85rem;
 }
 
-.icon-go { background: #00add8; color: white; }
-.icon-db { background: #336791; color: white; }
-.icon-react { background: #61dafb; color: #0a0e17; }
+.icon-go {
+  background: #00add8;
+  color: white;
+}
+.icon-db {
+  background: #336791;
+  color: white;
+}
+.icon-react {
+  background: #61dafb;
+  color: #0a0e17;
+}
 
 .status-pill {
   margin-left: auto;
@@ -292,10 +301,21 @@ body {
   cursor: pointer;
 }
 
-.run-button { background: #4f46e5; border: none; }
-.reset-button { border: 1px solid var(--border-highlight); background: var(--bg-secondary); }
-.batch-error { color: #fca5a5; }
-.batch-summary { font-weight: 700; color: var(--text-main); }
+.run-button {
+  background: #4f46e5;
+  border: none;
+}
+.reset-button {
+  border: 1px solid var(--border-highlight);
+  background: var(--bg-secondary);
+}
+.batch-error {
+  color: #fca5a5;
+}
+.batch-summary {
+  font-weight: 700;
+  color: var(--text-main);
+}
 
 table {
   width: 100%;
@@ -303,9 +323,9 @@ table {
   font-size: 0.85rem;
 }
 
-th, td {
+th,
+td {
   padding: 0.45rem 0.75rem;
   border-bottom: 1px solid var(--border-subtle);
   text-align: left;
 }
-

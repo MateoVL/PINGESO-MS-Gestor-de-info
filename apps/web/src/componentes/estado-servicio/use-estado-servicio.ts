@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { HealthResponse } from '../../types/openapi'
+import type { HealthResponse } from './estado-servicio.api'
 import { fetchServiceHealth } from './estado-servicio.api'
 
 export function useEstadoServicio(apiBaseUrl: string) {
@@ -39,11 +39,13 @@ export function useEstadoServicio(apiBaseUrl: string) {
   let bannerTitle = 'No se pudo contactar el Backend'
   if (loading) bannerTitle = 'Verificando servicios...'
   else if (backendConnected && dbConnected) bannerTitle = 'Todos los sistemas operativos'
-  else if (backendConnected && !dbConnected) bannerTitle = 'Backend operativo, Base de Datos no conectada'
+  else if (backendConnected && !dbConnected)
+    bannerTitle = 'Backend operativo, Base de Datos no conectada'
 
   let bannerSubtitle = error || 'Consulta el estado de la API para ver el diagnóstico.'
   if (loading) bannerSubtitle = 'Consultando endpoint /api/health...'
-  else if (backendConnected && dbConnected) bannerSubtitle = 'La API de Go está conectada a PostgreSQL.'
+  else if (backendConnected && dbConnected)
+    bannerSubtitle = 'La API de Go está conectada a PostgreSQL.'
   else if (backendConnected && !dbConnected && health) bannerSubtitle = health.database.message
 
   return {
@@ -59,4 +61,3 @@ export function useEstadoServicio(apiBaseUrl: string) {
     checkHealth,
   }
 }
-
