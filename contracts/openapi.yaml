@@ -38,13 +38,6 @@ components:
     ErrorModel:
       additionalProperties: false
       properties:
-        $schema:
-          description: A URL to the JSON Schema for this object.
-          examples:
-            - https://example.com/schemas/ErrorModel.json
-          format: uri
-          readOnly: true
-          type: string
         detail:
           description: A human-readable explanation specific to this occurrence of the problem.
           examples:
@@ -85,13 +78,6 @@ components:
     HealthResponse:
       additionalProperties: false
       properties:
-        $schema:
-          description: A URL to the JSON Schema for this object.
-          examples:
-            - https://example.com/schemas/HealthResponse.json
-          format: uri
-          readOnly: true
-          type: string
         database:
           $ref: "#/components/schemas/DatabaseStatus"
           description: Diagnóstico de conectividad con PostgreSQL
@@ -164,13 +150,6 @@ components:
     ListaLotes:
       additionalProperties: false
       properties:
-        $schema:
-          description: A URL to the JSON Schema for this object.
-          examples:
-            - https://example.com/schemas/ListaLotes.json
-          format: uri
-          readOnly: true
-          type: string
         elementos:
           description: Lotes de la página
           items:
@@ -203,13 +182,6 @@ components:
     ListaRechazos:
       additionalProperties: false
       properties:
-        $schema:
-          description: A URL to the JSON Schema for this object.
-          examples:
-            - https://example.com/schemas/ListaRechazos.json
-          format: uri
-          readOnly: true
-          type: string
         elementos:
           description: Rechazos del lote
           items:
@@ -221,13 +193,6 @@ components:
     ListaRegistros:
       additionalProperties: false
       properties:
-        $schema:
-          description: A URL to the JSON Schema for this object.
-          examples:
-            - https://example.com/schemas/ListaRegistros.json
-          format: uri
-          readOnly: true
-          type: string
         elementos:
           description: Registros aceptados de la página
           items:
@@ -260,13 +225,6 @@ components:
     LivenessStatus:
       additionalProperties: false
       properties:
-        $schema:
-          description: A URL to the JSON Schema for this object.
-          examples:
-            - https://example.com/schemas/LivenessStatus.json
-          format: uri
-          readOnly: true
-          type: string
         status:
           description: Estado del proceso HTTP
           examples:
@@ -328,13 +286,6 @@ components:
     LoteDetalle:
       additionalProperties: false
       properties:
-        $schema:
-          description: A URL to the JSON Schema for this object.
-          examples:
-            - https://example.com/schemas/LoteDetalle.json
-          format: uri
-          readOnly: true
-          type: string
         aceptados:
           description: Total de registros aceptados
           examples:
@@ -417,13 +368,6 @@ components:
     Registro:
       additionalProperties: false
       properties:
-        $schema:
-          description: A URL to the JSON Schema for this object.
-          examples:
-            - https://example.com/schemas/Registro.json
-          format: uri
-          readOnly: true
-          type: string
         correo:
           description: Correo normalizado en minúsculas
           examples:
@@ -477,16 +421,19 @@ components:
           description: Correo electrónico de contacto
           examples:
             - camila@example.com
+          maxLength: 254
           type: string
         folio:
           description: Folio identificador del documento
           examples:
             - DOC-0001
+          maxLength: 254
           type: string
         nombre:
           description: Nombre completo del titular
           examples:
             - Camila Soto
+          maxLength: 254
           type: string
       required:
         - folio
@@ -496,27 +443,24 @@ components:
     SolicitudLote:
       additionalProperties: false
       properties:
-        $schema:
-          description: A URL to the JSON Schema for this object.
-          examples:
-            - https://example.com/schemas/SolicitudLote.json
-          format: uri
-          readOnly: true
-          type: string
         origen:
           description: Sistema emisor del lote
           examples:
             - Extractor OCR
+          maxLength: 254
           type: string
         referencia_externa:
           description: Identificador de correlación en el emisor
           examples:
             - lote-2026-001
+          maxLength: 254
           type: string
         registros:
-          description: Lista de registros a procesar
+          description: Lista de registros a procesar (entre 1 y 5000)
           items:
             $ref: "#/components/schemas/RegistroEntrada"
+          maxItems: 5000
+          minItems: 1
           type: array
       required:
         - origen
@@ -535,7 +479,7 @@ components:
       name: session
       type: apiKey
 info:
-  description: Contrato OpenAPI 3.1 del microservicio PT2 (Gestor de Información · PINGESO). Recibe lotes del Extractor de Datos OCR (PT5), limpia, valida y almacena registros en PostgreSQL para el Motor de Reportes (PT1).
+  description: Recibe lotes de registros desde el extractor OCR, los limpia y valida, y guarda los registros aceptados en PostgreSQL para que otros servicios, como el motor de reportes, los consulten.
   title: MS Gestor de Información API
   version: 1.0.0
 openapi: 3.1.0

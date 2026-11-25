@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -28,7 +29,6 @@ type Config struct {
 	PostgresPassword string
 
 	DigitalizacionURL string
-	ReportesURL       string
 	IdentidadURL      string
 
 	Service ServiceInfo
@@ -89,7 +89,6 @@ func Load() (*Config, error) {
 		PostgresPassword: os.Getenv("POSTGRES_PASSWORD"),
 
 		DigitalizacionURL: getEnv("DIGITALIZACION_URL", "http://localhost:5151"),
-		ReportesURL:       getEnv("REPORTES_URL", "http://localhost:5111"),
 		IdentidadURL:      getEnv("IDENTIDAD_URL", "http://localhost:5101"),
 	}
 
@@ -112,8 +111,8 @@ func (c *Config) validate() error {
 	var errs []error
 
 	// Variables obligatorias según AGENTS.md sección 5
-	if c.Port != "8080" {
-		errs = append(errs, fmt.Errorf("API_PORT es obligatoria y debe ser siempre 8080 (valor: %q)", c.Port))
+	if p, err := strconv.Atoi(c.Port); err != nil || p < 1 || p > 65535 {
+		errs = append(errs, fmt.Errorf("API_PORT es obligatoria y debe ser un puerto válido, 8080 dentro del contenedor (valor: %q)", c.Port))
 	}
 	if !oneOf(c.APIEnv, "dev", "test", "prod") {
 		errs = append(errs, fmt.Errorf("API_ENV es obligatoria y debe ser dev, test o prod (valor: %q)", c.APIEnv))

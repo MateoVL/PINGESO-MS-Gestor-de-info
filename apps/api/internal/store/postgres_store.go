@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -143,6 +144,12 @@ func (s *PostgresBatchStore) Create(ctx context.Context, nb NuevoLote) error {
 		}
 	}
 
+	if nb.Auditoria.Accion != "" {
+		if err := insertarAuditoria(ctx, qtx, nb.Auditoria); err != nil {
+			return err
+		}
+	}
+
 	if tx != nil {
 		return tx.Commit(ctx)
 	}
@@ -267,6 +274,35 @@ func (s *PostgresBatchStore) FindRecordByID(ctx context.Context, id string) (Reg
 		return Registro{}, err
 	}
 	return mapRepoRegistro(row), nil
+}
+
+// guarda quien, que y cuando dentro de la transaccion en curso
+func insertarAuditoria(ctx context.Context, q repository.Querier, ev EventoAuditoria) error {
+	entidadID, err := parsePGUUID(ev.EntidadID)
+	if err != nil {
+		return err
+	}
+	detalle := ev.Detalle
+	if detalle == nil {
+		detalle = map[string]any{}
+	}
+	detalleJSON, err := json.Marshal(detalle)
+	if err != nil {
+		return fmt.Errorf("serializando el detalle de auditoría: %w", err)
+	}
+	err = q.CreateEventoAuditoria(ctx, repository.CreateEventoAuditoriaParams{
+		OcurridoEn: toPGTimestamptz(ev.OcurridoEn),
+		Actor:      ev.Actor,
+		Accion:     ev.Accion,
+		Entidad:    ev.Entidad,
+		EntidadID:  entidadID,
+		RequestID:  ev.RequestID,
+		Detalle:    detalleJSON,
+	})
+	if err != nil {
+		return fmt.Errorf("insertando auditoría: %w", err)
+	}
+	return nil
 }
 
 func parsePGUUID(s string) (pgtype.UUID, error) {

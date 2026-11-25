@@ -17,7 +17,10 @@ import (
 	"github.com/mateo/ms-gestor-de-info/apps/api/internal/store"
 )
 
-const shutdownTimeout = 10 * time.Second
+const (
+	shutdownTimeout = 10 * time.Second
+	nombreServicio  = "gestor-info"
+)
 
 var version = "dev"
 
@@ -143,9 +146,8 @@ func newLogger(cfg *config.Config) *slog.Logger {
 	var level slog.Level
 	_ = level.UnmarshalText([]byte(cfg.LogLevel))
 
-	opts := &slog.HandlerOptions{Level: level}
-	if cfg.APIEnv == "dev" {
-		return slog.New(slog.NewTextHandler(os.Stdout, opts))
-	}
-	return slog.New(slog.NewJSONHandler(os.Stdout, opts))
+	return slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level})).With(
+		slog.String("servicio", nombreServicio),
+		slog.String("version", version),
+	)
 }

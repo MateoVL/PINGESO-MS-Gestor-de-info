@@ -189,12 +189,6 @@ export interface components {
         };
         ErrorModel: {
             /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/ErrorModel.json
-             */
-            readonly $schema?: string;
-            /**
              * @description A human-readable explanation specific to this occurrence of the problem.
              * @example Property foo is required but is missing.
              */
@@ -227,12 +221,6 @@ export interface components {
             type: string;
         };
         HealthResponse: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/HealthResponse.json
-             */
-            readonly $schema?: string;
             /** @description Diagnóstico de conectividad con PostgreSQL */
             database: components["schemas"]["DatabaseStatus"];
             /**
@@ -277,12 +265,6 @@ export interface components {
             depends_on: string[];
         };
         ListaLotes: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/ListaLotes.json
-             */
-            readonly $schema?: string;
             /** @description Lotes de la página */
             elementos: components["schemas"]["Lote"][];
             /**
@@ -305,22 +287,10 @@ export interface components {
             total: number;
         };
         ListaRechazos: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/ListaRechazos.json
-             */
-            readonly $schema?: string;
             /** @description Rechazos del lote */
             elementos: components["schemas"]["Rechazo"][];
         };
         ListaRegistros: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/ListaRegistros.json
-             */
-            readonly $schema?: string;
             /** @description Registros aceptados de la página */
             elementos: components["schemas"]["Registro"][];
             /**
@@ -343,12 +313,6 @@ export interface components {
             total: number;
         };
         LivenessStatus: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/LivenessStatus.json
-             */
-            readonly $schema?: string;
             /**
              * @description Estado del proceso HTTP
              * @example ok
@@ -397,12 +361,6 @@ export interface components {
             referencia_externa: string;
         };
         LoteDetalle: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/LoteDetalle.json
-             */
-            readonly $schema?: string;
             /**
              * Format: int64
              * @description Total de registros aceptados
@@ -467,12 +425,6 @@ export interface components {
         };
         Registro: {
             /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/Registro.json
-             */
-            readonly $schema?: string;
-            /**
              * @description Correo normalizado en minúsculas
              * @example camila@example.com
              */
@@ -530,12 +482,6 @@ export interface components {
         };
         SolicitudLote: {
             /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/SolicitudLote.json
-             */
-            readonly $schema?: string;
-            /**
              * @description Sistema emisor del lote
              * @example Extractor OCR
              */
@@ -545,7 +491,7 @@ export interface components {
              * @example lote-2026-001
              */
             referencia_externa: string;
-            /** @description Lista de registros a procesar */
+            /** @description Lista de registros a procesar (entre 1 y 5000) */
             registros: components["schemas"]["RegistroEntrada"][];
         };
     };

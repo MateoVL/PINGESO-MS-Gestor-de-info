@@ -29,6 +29,12 @@ type fakeQuerier struct {
 	rechazos   map[string][]repository.Rechazo
 	folios     map[string]bool
 	forcePgDup bool
+	auditoria  []repository.CreateEventoAuditoriaParams
+}
+
+func (f *fakeQuerier) CreateEventoAuditoria(_ context.Context, arg repository.CreateEventoAuditoriaParams) error {
+	f.auditoria = append(f.auditoria, arg)
+	return nil
 }
 
 func newFakeQuerier() *fakeQuerier {
@@ -281,10 +287,18 @@ func TestPostgresBatchStoreWithQuerier(t *testing.T) {
 		Rechazos: []Rechazo{
 			{LoteID: loteID, Posicion: 2, Folio: "DOC-PG-2", Motivos: []string{"correo_invalido"}},
 		},
+		Auditoria: EventoAuditoria{
+			OcurridoEn: now, Actor: "usuario-1", Accion: AccionCrearLote, Entidad: EntidadLote,
+			EntidadID: loteID, RequestID: "req-pg-1", Detalle: map[string]any{"aceptados": 1},
+		},
 	}
 
 	if err := st.Create(ctx, nb); err != nil {
 		t.Fatalf("PostgresBatchStore.Create falló: %v", err)
+	}
+	if len(fq.auditoria) != 1 || fq.auditoria[0].Actor != "usuario-1" || fq.auditoria[0].Accion != AccionCrearLote ||
+		formatPGUUID(fq.auditoria[0].EntidadID) != loteID || string(fq.auditoria[0].Detalle) != `{"aceptados":1}` {
+		t.Fatalf("el lote debe dejar su evento de auditoría: %+v", fq.auditoria)
 	}
 
 	// Clave de idempotencia repetida (con folio nuevo para llegar a CreateLote)

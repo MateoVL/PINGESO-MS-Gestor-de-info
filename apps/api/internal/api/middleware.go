@@ -150,10 +150,10 @@ func LoggerMiddleware(logger *slog.Logger, quietPaths ...string) func(http.Handl
 
 			logger.LogAttrs(r.Context(), level, "petición HTTP",
 				slog.String("request_id", service.RequestIDFromContext(r.Context())),
-				slog.String("method", r.Method),
-				slog.String("path", path),
-				slog.Int("status", rec.status),
-				slog.Int64("duration_ms", time.Since(start).Milliseconds()),
+				slog.String("metodo", r.Method),
+				slog.String("ruta", path),
+				slog.Int("estado", rec.status),
+				slog.Int64("duracion_ms", time.Since(start).Milliseconds()),
 				slog.String("client_ip", clientIP),
 			)
 		})

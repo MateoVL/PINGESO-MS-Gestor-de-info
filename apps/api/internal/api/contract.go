@@ -5,18 +5,16 @@ import (
 	"github.com/mateo/ms-gestor-de-info/apps/api/internal/store"
 )
 
-// Structs de request y response del contrato OpenAPI 3.1 (AGENTS.md sección 2: Contrato API-first).
-
 type RegistroEntrada struct {
-	Folio  string `json:"folio" doc:"Folio identificador del documento" example:"DOC-0001"`
-	Nombre string `json:"nombre" doc:"Nombre completo del titular" example:"Camila Soto"`
-	Correo string `json:"correo" doc:"Correo electrónico de contacto" example:"camila@example.com"`
+	Folio  string `json:"folio" maxLength:"254" doc:"Folio identificador del documento" example:"DOC-0001"`
+	Nombre string `json:"nombre" maxLength:"254" doc:"Nombre completo del titular" example:"Camila Soto"`
+	Correo string `json:"correo" maxLength:"254" doc:"Correo electrónico de contacto" example:"camila@example.com"`
 }
 
 type SolicitudLote struct {
-	Origen            string            `json:"origen" doc:"Sistema emisor del lote" example:"Extractor OCR"`
-	ReferenciaExterna string            `json:"referencia_externa" doc:"Identificador de correlación en el emisor" example:"lote-2026-001"`
-	Registros         []RegistroEntrada `json:"registros" nullable:"false" doc:"Lista de registros a procesar"`
+	Origen            string            `json:"origen" maxLength:"254" doc:"Sistema emisor del lote" example:"Extractor OCR"`
+	ReferenciaExterna string            `json:"referencia_externa" maxLength:"254" doc:"Identificador de correlación en el emisor" example:"lote-2026-001"`
+	Registros         []RegistroEntrada `json:"registros" nullable:"false" minItems:"1" maxItems:"5000" doc:"Lista de registros a procesar (entre 1 y 5000)"`
 }
 
 type LivenessStatus struct {

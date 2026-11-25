@@ -13,6 +13,7 @@ import (
 type Querier interface {
 	CountLotes(ctx context.Context) (int64, error)
 	CountRegistros(ctx context.Context, arg CountRegistrosParams) (int64, error)
+	CreateEventoAuditoria(ctx context.Context, arg CreateEventoAuditoriaParams) error
 	CreateLote(ctx context.Context, arg CreateLoteParams) (Lote, error)
 	CreateRechazo(ctx context.Context, arg CreateRechazoParams) (Rechazo, error)
 	CreateRegistro(ctx context.Context, arg CreateRegistroParams) (Registro, error)

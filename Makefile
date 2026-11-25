@@ -26,7 +26,6 @@ env: ## Crea el archivo .env a partir de .env.example con valores funcionales pa
 			-e 's|FRONTEND_URL=replace-with-.*|FRONTEND_URL=http://localhost:5120|' \
 			-e 's|TZ=replace-with-.*|TZ=America/Santiago|' \
 			-e 's|DIGITALIZACION_URL=replace-with-.*|DIGITALIZACION_URL=http://localhost:5151|' \
-			-e 's|REPORTES_URL=replace-with-.*|REPORTES_URL=http://localhost:5111|' \
 			-e 's|IDENTIDAD_URL=replace-with-.*|IDENTIDAD_URL=http://localhost:5101|' \
 			-e 's|APP_NAME=replace-with-.*|APP_NAME="MS Gestor de Información"|' \
 			-e 's|APP_ENV=replace-with-.*|APP_ENV=development|' \
@@ -55,7 +54,6 @@ env: ## Crea el archivo .env a partir de .env.example con valores funcionales pa
 			-e 's|FRONTEND_URL=replace-with-.*|FRONTEND_URL=http://localhost:5120|' \
 			-e 's|TZ=replace-with-.*|TZ=America/Santiago|' \
 			-e 's|DIGITALIZACION_URL=replace-with-.*|DIGITALIZACION_URL=http://localhost:5151|' \
-			-e 's|REPORTES_URL=replace-with-.*|REPORTES_URL=http://localhost:5111|' \
 			-e 's|IDENTIDAD_URL=replace-with-.*|IDENTIDAD_URL=http://localhost:5101|' \
 			-e 's|APP_NAME=replace-with-.*|APP_NAME="MS Gestor de Información"|' \
 			-e 's|APP_ENV=replace-with-.*|APP_ENV=development|' \

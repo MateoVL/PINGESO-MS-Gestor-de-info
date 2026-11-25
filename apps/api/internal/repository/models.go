@@ -8,6 +8,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Auditorium struct {
+	ID         int64              `json:"id"`
+	OcurridoEn pgtype.Timestamptz `json:"ocurrido_en"`
+	Actor      string             `json:"actor"`
+	Accion     string             `json:"accion"`
+	Entidad    string             `json:"entidad"`
+	EntidadID  pgtype.UUID        `json:"entidad_id"`
+	RequestID  string             `json:"request_id"`
+	Detalle    []byte             `json:"detalle"`
+}
+
 type Lote struct {
 	ID                pgtype.UUID        `json:"id"`
 	Origen            string             `json:"origen"`
