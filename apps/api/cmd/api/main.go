@@ -110,8 +110,7 @@ func run() error {
 	serverErr := make(chan error, 1)
 	go func() {
 		logger.Info("servidor iniciado",
-			slog.String("service", cfg.AppName),
-			slog.String("version", version),
+			slog.String("nombre", cfg.AppName),
 			slog.String("environment", cfg.AppEnv),
 			slog.String("api_env", cfg.APIEnv),
 			slog.String("addr", srv.Addr),

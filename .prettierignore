@@ -7,3 +7,4 @@ apps/web/src/types/openapi.d.ts
 apps/api/internal/repository
 apps/api/coverage.out
 
+apps/api/e2e/testdata
