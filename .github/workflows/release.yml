@@ -25,7 +25,7 @@ jobs:
           docker build --pull -f apps/api/Dockerfile.migrate -t ${REGISTRY}/${GITHUB_REPOSITORY}/migrate:${GITHUB_REF_NAME} .
 
       - name: Generar SBOM CycloneDX con Trivy (api)
-        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           version: ${{ env.TRIVY_VERSION }}
           image-ref: ${{ env.REGISTRY }}/${{ github.repository }}/api:${{ github.ref_name }}
@@ -33,7 +33,7 @@ jobs:
           output: sbom-api.cdx.json
 
       - name: Generar SBOM CycloneDX con Trivy (migrate)
-        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           version: ${{ env.TRIVY_VERSION }}
           image-ref: ${{ env.REGISTRY }}/${{ github.repository }}/migrate:${{ github.ref_name }}
