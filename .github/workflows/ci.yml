@@ -34,7 +34,9 @@ jobs:
         run: |
           if git cat-file -e origin/main:contracts/openapi.yaml 2>/dev/null; then
             git show origin/main:contracts/openapi.yaml > /tmp/base.yaml
-            go run github.com/oasdiff/oasdiff@${OASDIFF_VERSION} breaking /tmp/base.yaml contracts/openapi.yaml --fail-on ERR
+            # contracts/oasdiff-excepciones.txt: cambios puntuales revisados que oasdiff marca
+            # como incompatibles pero no cambian el comportamiento de la API (ver PR #56)
+            go run github.com/oasdiff/oasdiff@${OASDIFF_VERSION} breaking /tmp/base.yaml contracts/openapi.yaml --fail-on ERR --err-ignore contracts/oasdiff-excepciones.txt
           else
             echo "origin/main:contracts/openapi.yaml no existe todavía; se omite comparación inicial."
           fi

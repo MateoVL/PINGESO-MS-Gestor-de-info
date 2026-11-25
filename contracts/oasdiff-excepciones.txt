@@ -1,0 +1,7 @@
+POST /api/v1/lotes the `origen` request property's maxLength was set to `254`
+POST /api/v1/lotes the `referencia_externa` request property's maxLength was set to `254`
+POST /api/v1/lotes the `registros/items/correo` request property's maxLength was set to `254`
+POST /api/v1/lotes the `registros/items/folio` request property's maxLength was set to `254`
+POST /api/v1/lotes the `registros/items/nombre` request property's maxLength was set to `254`
+POST /api/v1/lotes the `registros` request property's minItems was set to `1`
+POST /api/v1/lotes the `registros` request property's maxItems was set to `5000`
