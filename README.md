@@ -2,6 +2,19 @@
 
 Base del microservicio **PT2 (Gestor de Información)** alineada con las reglas de arquitectura, contrato API-first y versiones exactas de `AGENTS.md`. Su objetivo en la Línea de Productos de Software es recibir datos masivos del **PT5, Extractor de Datos OCR**, limpiarlos, validarlos y almacenarlos en PostgreSQL para que el **PT1, Motor de Reportes**, pueda consumirlos.
 
+## Índice
+
+- [Stack y estructura del repositorio (`AGENTS.md`)](#stack-y-estructura-del-repositorio-agentsmd)
+  - [Estructura de carpetas](#estructura-de-carpetas)
+- [Guía para Desarrolladores](#guía-para-desarrolladores)
+  - [1. Tecnologías utilizadas y su rol](#1-tecnologías-utilizadas-y-su-rol)
+  - [2. ¿Qué debes descargar e instalar?](#2-qué-debes-descargar-e-instalar)
+  - [3. ¿Cómo trabajar en el repositorio?](#3-cómo-trabajar-en-el-repositorio)
+  - [4. SonarQube Cloud: Qué hace, cómo funciona y cómo ingresar](#4-sonarqube-cloud-qué-hace-cómo-funciona-y-cómo-ingresar)
+- [Comandos principales (`Makefile`)](#comandos-principales-makefile)
+- [Escáneres obligatorios: SonarQube y Trivy (`AGENTS.md` sección 7)](#escáneres-obligatorios-sonarqube-y-trivy-agentsmd-sección-7)
+  - [Registro de actualizaciones de seguridad del stack (`AGENTS.md` secciones 3, 6 y 7)](#registro-de-actualizaciones-de-seguridad-del-stack-agentsmd-secciones-3-6-y-7)
+
 ## Stack y estructura del repositorio (`AGENTS.md`)
 
 | Componente             | Tecnología y Versión Exacta                                                                                        | Ubicación                |
@@ -40,13 +53,102 @@ Base del microservicio **PT2 (Gestor de Información)** alineada con las reglas 
 └── .github/workflows/ci.yml
 ```
 
-## Levantar el entorno
+## Guía para Desarrolladores
 
-Desde la raíz, con Docker y Docker Compose v2 en ejecución:
+### 1. Tecnologías utilizadas y su rol
+
+#### Backend (`apps/api/`)
+
+- **Go (`1.26.11`)**: Lenguaje principal del servicio y del servidor estático (`spa-server`) del frontend en producción.
+- **Huma (`v2.34.1`)**: Framework HTTP y generador del contrato **OpenAPI 3.1** directamente desde structs de Go (enfoque _API-first_).
+- **pgx (`v5.10.0`)**: Driver y pool de conexiones de alto rendimiento para PostgreSQL.
+- **sqlc (`v1.29.0`)**: Compilador que transforma consultas SQL (`db/queries/*.sql`) en código Go fuertemente tipado (`internal/repository/`).
+- **Goose (`v3.24.1`)**: Herramienta para gestionar migraciones incrementales del esquema de PostgreSQL (`db/migrations/`).
+- **oapi-codegen (`v2.8.2`)**: Generador de clientes HTTP en Go a partir de contratos OpenAPI de otros microservicios (`contracts/externos/`).
+- **golang-jwt (`v5.3.1`) + keyfunc (`v3.9.1`)**: Validación de tokens JWT y lectura/caché de llaves públicas (JWKS) del servicio de identidad.
+- **Testcontainers (`v0.43.0`)**: Levanta instancias reales de PostgreSQL en contenedores efímeros durante las pruebas de integración y E2E.
+
+#### Frontend (`apps/web/`)
+
+- **React (`19.2.8`) + TypeScript (`6.0.3`) + Vite (`8.1.6`)**: Base para construir los microcomponentes autocontenidos (`@pingeso/ms-gestor-de-info-ui`) y el entorno de desarrollo local.
+- **Tailwind CSS (`4.3.3`) + Base UI (`1.6.0`)**: Sistema de estilos utilitarios y primitivas de interfaz accesibles.
+- **openapi-typescript (`7.13.0`) + openapi-fetch (`0.15.2`)**: Generan tipos TypeScript desde `contracts/openapi.yaml` y proveen un cliente HTTP tipado sin desincronización con el backend.
+- **TanStack Query (`5.101.4`) + React Hook Form (`7.83.0`)**: Manejo de estado asíncrono/caché de peticiones y gestión de formularios.
+- **MSW (`2.15.0`) + Prism (`5.16.0`)**: Simulación (mocking) de APIs para desarrollar y probar microcomponentes en paralelo antes de tener la lógica final del backend.
+- **Vitest (`4.1.10`) + Playwright (`1.62.0`)**: Ejecución de pruebas unitarias, de componentes y pruebas End-to-End (E2E).
+
+#### Base de Datos, Calidad, Seguridad y Contratos
+
+- **PostgreSQL (`17.11`)**: Base de datos relacional exclusiva del microservicio.
+- **Lefthook (`2.1.10`)**: Gestor de Git Hooks (`pre-commit` y `pre-push`) que ejecuta validaciones automáticas antes de permitir un commit o un push.
+- **Oxlint (`1.75.0`) + Prettier (`3.9.6`)**: Linter de alta velocidad y formateador de código para TypeScript/React. Bloquea malas prácticas como usar `fetch` fuera de `*.api.ts` o usar `localStorage`.
+- **Gitleaks (`v8.30.1`)**: Escáner de secretos (contraseñas, API keys, tokens JWT, llaves privadas). Corre tanto en tu máquina antes de cada commit (`gitleaks protect --staged`) como en GitHub Actions sobre todo el historial para impedir que una credencial llegue al repositorio.
+- **govulncheck (`v1.9.0`)**: Analizador oficial de seguridad de Go. A diferencia de un escáner común, analiza el grafo de llamadas del código para detectar si la librería estándar de Go o algún paquete de `go.mod` tiene vulnerabilidades conocidas en funciones que nuestro código realmente invoca.
+- **Trivy (`v0.76.1`)**: Escáner integral de seguridad que actúa en dos etapas (`trivy fs` y `trivy image`):
+  1. **En el repositorio (`fs`)**: Revisa `go.sum` y `pnpm-lock.yaml` buscando CVEs (`HIGH` o `CRITICAL` con parche disponible), detecta errores de configuración en `Dockerfile` y `docker-compose.yaml`, y busca secretos expuestos.
+  2. **En las imágenes construidas (`image`)**: Inspecciona las capas finales de `api` y `web` para asegurar que ni el sistema base (`distroless`/`alpine`) ni los binarios compilados contengan vulnerabilidades o secretos embebidos.
+- **Hadolint (`v2.15.1`)**: Linter de `Dockerfile` que valida buenas prácticas de construcción de imágenes (fijación de imágenes por digest SHA-256, uso correcto de instrucciones `RUN`/`COPY`, usuario no root, etc.). Falla ante cualquier regla de nivel `error`.
+- **Dockle (`v0.4.15`)**: Auditor de seguridad para imágenes de contenedores ya construidas (benchmarks CIS). Verifica que la imagen final no corra como `root`, no tenga archivos sensibles, ni exponga credenciales o configuraciones inseguras en sus metadatos.
+- **oasdiff (`v1.35.0`)**: Comparador de contratos OpenAPI. En cada PR compara tu `contracts/openapi.yaml` contra el de la rama `main` y bloquea el pipeline si detecta un cambio incompatible (_breaking change_, como eliminar un campo o cambiar un tipo de dato).
+- **SonarQube Cloud**: Plataforma de inspección continua de calidad y seguridad sobre el código propio (detallada en la sección 4).
+
+---
+
+### 2. ¿Qué debes descargar e instalar?
+
+Para trabajar en el repositorio debes instalar las siguientes herramientas respetando las versiones exactas fijadas en `AGENTS.md`:
+
+1. **Git**: Para el control de versiones.
+2. **Docker, Docker Compose v2 y Docker Buildx**:
+   - **Importante sobre `docker-buildx`**: Debes tener instalado el plugin **Buildx** (`docker buildx version`). En muchas distribuciones de Linux viene en un paquete separado (ej. `docker-buildx-plugin` o `docker-buildx`). Es obligatorio porque nuestros Dockerfiles usan características avanzadas de BuildKit (`# syntax=docker/dockerfile:1.7`, cachés con `RUN --mount=type=cache` y variables multi-arquitectura `--platform=$BUILDPLATFORM`), además de usarse para consultar digests multi-arquitectura (`docker buildx imagetools inspect`).
+3. **GNU Make**: Para utilizar los comandos del `Makefile` (incluido en Linux/macOS; en Windows usar WSL2).
+4. **Go `1.26.11`**: Requerido para compilar el backend, correr pruebas y ejecutar herramientas como `sqlc`, `goose`, `govulncheck` y `oasdiff`.
+5. **Node.js `22.22.0`**: Recomendado instalarlo mediante `nvm` o `fnm` (el repositorio incluye `.nvmrc`, por lo que basta correr `nvm use`).
+6. **pnpm `10.13.1`**: Gestor de paquetes del monorepo. Puedes activarlo con Node ejecutando:
+   ```bash
+   corepack enable && corepack prepare pnpm@10.13.1 --activate
+   ```
+7. **Gitleaks `v8.30.1`**: **Obligatorio en local**, ya que el hook `pre-commit` de Lefthook lo ejecuta automáticamente en cada commit. Si no lo tienes instalado en tu `PATH`, el commit fallará.
+8. **Trivy `v0.76.1` y SonarScanner CLI** _(opcionales pero recomendados)_: Para ejecutar en tu máquina las mismas auditorías de vulnerabilidades y calidad que correrán en GitHub Actions.
+
+---
+
+### 3. ¿Cómo trabajar en el repositorio?
+
+#### Paso 1: Configuración inicial (solo la primera vez)
 
 ```bash
-docker compose up --build
+# 1. Instalar dependencias de Node (respeta el lockfile exacto)
+pnpm install --frozen-lockfile
+
+# 2. Activar los Git Hooks locales (.npmrc tiene ignore-scripts=true por seguridad)
+pnpm exec lefthook install
+
+# 3. Descargar y verificar módulos de Go
+cd apps/api && go mod download && cd ../..
+
+# 4. Generar el archivo .env local con valores funcionales de desarrollo
+make env
 ```
+
+#### Paso 2: Levantar el entorno de desarrollo
+
+Tienes dos modos de trabajo según lo que estés desarrollando:
+
+- **Opción A — Todo en Docker Compose (recomendado para probar integración completa):**
+  ```bash
+  make dev        # Construye y levanta postgres, migraciones, backend (:5121) y frontend (:5120)
+  make down       # Detiene los contenedores
+  ```
+- **Opción B — Ejecución nativa en tu máquina (más rápida para iterar código):**
+  ```bash
+  make local-db      # 1. Levanta únicamente PostgreSQL en Docker (:5432)
+  make migrate-up    # 2. Aplica las migraciones en la base local con goose
+  make local-back    # 3. En una terminal: corre la API Go en el host
+  make local-front   # 4. En otra terminal: corre el servidor Vite con Hot-Reload
+  ```
+
+**Endpoints locales para verificar que todo levantó bien:**
 
 - **Panel web** (React 19, `spa-server` en contenedor `:8080`): [http://127.0.0.1:5120](http://127.0.0.1:5120)
 - **Healthcheck Web**: [http://127.0.0.1:5120/healthz](http://127.0.0.1:5120/healthz)
@@ -55,6 +157,71 @@ docker compose up --build
 - **Diagnóstico de salud**: [http://127.0.0.1:5121/api/health](http://127.0.0.1:5121/api/health)
 - **Documentación interactiva OpenAPI 3.1 (`API_ENV=dev`)**: [http://127.0.0.1:5121/api/docs](http://127.0.0.1:5121/api/docs)
 - **Mailpit UI (perfil `dev`, `docker compose --profile dev up`)**: [http://127.0.0.1:8025](http://127.0.0.1:8025)
+
+#### Paso 3: Flujo de desarrollo diario
+
+1. **Respetar Clean Architecture en el Backend (`Handler → Service → Store`)**:
+   - `internal/api/`: Solo traduce HTTP y define structs del contrato Huma. **Nunca** llama directo al `store`.
+   - `internal/service/`: Reglas de negocio puras (sin detalles HTTP ni SQL).
+   - `internal/store/` + `internal/repository/`: Acceso a PostgreSQL.
+2. **Contrato API-first (cuando modifiques o agregues un endpoint)**:
+   - Edita los structs/handlers en `apps/api/internal/api/`.
+   - Ejecuta `make codegen` (o `pnpm codegen`) para actualizar `contracts/openapi.yaml` y regenerar los tipos TypeScript en `apps/web/src/types/openapi.d.ts`. **Ambos archivos deben incluirse en el commit**.
+3. **Base de datos y consultas SQL**:
+   - Para cambios de esquema, crea una migración nueva en `apps/api/db/migrations/` y aplícala con `make migrate-up`.
+   - Si agregas o modificas queries en `apps/api/db/queries/*.sql`, ejecuta `make sqlc` para regenerar `apps/api/internal/repository/` (nunca edites `internal/repository/` a mano).
+4. **Microcomponentes en el Frontend**:
+   - Cada componente vive en `apps/web/src/componentes/<kebab-case>/` dividido en tres archivos: `<nombre>.tsx` (vista sin lógica), `<nombre>.api.ts` (único archivo donde se permite usar `fetch`/cliente API) y `use-<nombre>.ts` (estado y hooks).
+   - Está prohibido usar `localStorage` o `sessionStorage`, e importar código entre microcomponentes distintos.
+
+#### Paso 4: Verificación antes de hacer Commit / Pull Request
+
+Antes de subir tus cambios y abrir un PR, ejecuta:
+
+```bash
+# Ejecuta linter, formato, chequeo de tipos, pruebas con cobertura, build y go vet
+pnpm verify
+
+# Verifica que el contrato OpenAPI y los tipos TS estén sincronizados sin cambios pendientes
+pnpm codegen && git diff --exit-code
+```
+
+> **Nota:** Nunca subas versiones de dependencias a mano dentro de un PR de funcionalidad; el repositorio exige fijación exacta (`save-exact=true`) verificada en CI.
+
+---
+
+### 4. SonarQube Cloud: Qué hace, cómo funciona y cómo ingresar
+
+#### ¿Qué hace SonarQube Cloud?
+
+Mientras que herramientas como Trivy o `govulncheck` vigilan las dependencias externas y contenedores, **SonarQube Cloud** audita el **código propio** escrito por el equipo en `apps/api` (Go) y `apps/web/src` (TypeScript/React). Detecta:
+
+- **Bugs y Vulnerabilidades** en la lógica de negocio.
+- **Code Smells** (problemas de mantenibilidad y complejidad cognitiva).
+- **Security Hotspots** (fragmentos sensibles de seguridad que requieren revisión humana).
+- **Porcentaje de código duplicado** y **Cobertura de pruebas (Coverage)** sobre las líneas nuevas o modificadas.
+
+#### ¿Cómo funciona en nuestro pipeline?
+
+1. **Generación de cobertura en CI**: En cada push o Pull Request, el job `calidad` de GitHub Actions ejecuta:
+   - `pnpm test:coverage` en el frontend, generando el reporte LCOV en `apps/web/coverage/lcov.info`.
+   - `pnpm test:e2e:api` en el backend, que compila el binario de la API instrumentado con `go build -cover`, ejecuta las pruebas unitarias y E2E reales, y exporta el perfil de cobertura a `coverage.out`.
+2. **Escaneo (`sonarqube-scan-action`)**: Lee la configuración de `sonar-project.properties` en la raíz del repositorio (donde se excluyen archivos autogenerados como `internal/repository/**` o `src/types/**`, mocks y entrypoints) y envía el código junto con ambos reportes de cobertura a SonarQube Cloud.
+3. **Bloqueo por Quality Gate (`sonarqube-quality-gate-action`)**: El pipeline espera el veredicto de SonarQube Cloud. Para que el PR pueda integrarse a `main`, el **código nuevo** debe cumplir el _Quality Gate_:
+   - **0** Bugs y **0** Vulnerabilidades nuevas.
+   - **100%** de Security Hotspots revisados.
+   - **< 3%** de líneas duplicadas.
+   - **≥ 60%** de cobertura de pruebas en código nuevo.
+
+#### ¿Cómo ingresar a SonarQube Cloud?
+
+1. Entra a [https://sonarcloud.io](https://sonarcloud.io) e inicia sesión con tu cuenta de **GitHub**.
+2. Accede directamente al panel del proyecto mediante este enlace:
+   - **Dashboard del proyecto**: [https://sonarcloud.io/project/overview?id=MateoVL_PINGESO-MS-Gestor-de-info](https://sonarcloud.io/project/overview?id=MateoVL_PINGESO-MS-Gestor-de-info)
+   - **Organización (`sonar.organization`)**: `mateovl`
+   - **Project Key (`sonar.projectKey`)**: `MateoVL_PINGESO-MS-Gestor-de-info`
+3. Dentro del panel, en la pestaña **Pull Requests** o **Branches**, puedes revisar el detalle exacto de por qué falló un Quality Gate (qué líneas nuevas no tienen tests, qué _Code Smell_ apareció o qué _Security Hotspot_ falta revisar).
+4. Si necesitas permisos de administración o revisión de _Security Hotspots_, solicítalos al administrador de la organización en GitHub/SonarQube Cloud.
 
 ## Comandos principales (`Makefile`)
 
