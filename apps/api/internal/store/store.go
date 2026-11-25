@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/PINGESO-CIVIL/gestor-de-info/apps/api/internal/config"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/mateo/ms-gestor-de-info/apps/api/internal/config"
 )
 
 // Límites de un lote y de la paginación

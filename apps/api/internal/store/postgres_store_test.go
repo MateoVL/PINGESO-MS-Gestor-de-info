@@ -10,12 +10,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/PINGESO-CIVIL/gestor-de-info/apps/api/internal/config"
+	"github.com/PINGESO-CIVIL/gestor-de-info/apps/api/internal/repository"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/mateo/ms-gestor-de-info/apps/api/internal/config"
-	"github.com/mateo/ms-gestor-de-info/apps/api/internal/repository"
 	"github.com/pressly/goose/v3"
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 )

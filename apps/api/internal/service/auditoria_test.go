@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/mateo/ms-gestor-de-info/apps/api/internal/store"
+	"github.com/PINGESO-CIVIL/gestor-de-info/apps/api/internal/store"
 )
 
 func TestAuditoriaRegistraQuienQueYCuando(t *testing.T) {

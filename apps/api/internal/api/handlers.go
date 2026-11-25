@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/PINGESO-CIVIL/gestor-de-info/apps/api/internal/service"
+	"github.com/PINGESO-CIVIL/gestor-de-info/apps/api/internal/store"
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humago"
-	"github.com/mateo/ms-gestor-de-info/apps/api/internal/service"
-	"github.com/mateo/ms-gestor-de-info/apps/api/internal/store"
 )
 
 const maxBodyBytes = 5 << 20

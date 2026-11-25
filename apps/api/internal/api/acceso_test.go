@@ -15,10 +15,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/PINGESO-CIVIL/gestor-de-info/apps/api/internal/config"
+	"github.com/PINGESO-CIVIL/gestor-de-info/apps/api/internal/service"
+	"github.com/PINGESO-CIVIL/gestor-de-info/apps/api/internal/store"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/mateo/ms-gestor-de-info/apps/api/internal/config"
-	"github.com/mateo/ms-gestor-de-info/apps/api/internal/service"
-	"github.com/mateo/ms-gestor-de-info/apps/api/internal/store"
 )
 
 type testKeyPair struct {
