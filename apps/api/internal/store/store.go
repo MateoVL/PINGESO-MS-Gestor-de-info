@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/PINGESO-CIVIL/gestor-de-info/apps/api/internal/config"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/mateo/ms-gestor-de-info/apps/api/internal/config"
 )
 
 // Límites de un lote y de la paginación
@@ -115,6 +115,24 @@ type NuevoLote struct {
 	Lote      Lote
 	Registros []Registro
 	Rechazos  []Rechazo
+	Auditoria EventoAuditoria
+}
+
+// acciones y entidades auditadas
+const (
+	AccionCrearLote = "crear_lote"
+	EntidadLote     = "lote"
+)
+
+// registra quien, que y cuando de una operacion que cambia datos
+type EventoAuditoria struct {
+	OcurridoEn time.Time
+	Actor      string
+	Accion     string
+	Entidad    string
+	EntidadID  string
+	RequestID  string
+	Detalle    map[string]any
 }
 
 // Errores de dominio y almacenamiento
@@ -177,6 +195,14 @@ type MemoryBatchStore struct {
 	records    []Registro
 	folios     map[string]bool
 	rejections map[string][]Rechazo
+	auditoria  []EventoAuditoria
+}
+
+// devuelve una copia de los eventos registrados
+func (m *MemoryBatchStore) EventosAuditoria() []EventoAuditoria {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return slices.Clone(m.auditoria)
 }
 
 func NewMemoryBatchStore() *MemoryBatchStore {
@@ -220,6 +246,9 @@ func (m *MemoryBatchStore) Create(_ context.Context, nb NuevoLote) error {
 	}
 	m.records = append(m.records, nb.Registros...)
 	m.rejections[nb.Lote.ID] = slices.Clone(nb.Rechazos)
+	if nb.Auditoria.Accion != "" {
+		m.auditoria = append(m.auditoria, nb.Auditoria)
+	}
 	return nil
 }
 

@@ -65,9 +65,9 @@ func TestLoadRejectsMissingOrInvalidMandatoryVariables(t *testing.T) {
 		wantMsg string
 	}{
 		{
-			name: "puerto no es 8080",
+			name: "puerto no numérico",
 			mutate: func(t *testing.T) {
-				t.Setenv("API_PORT", "5121")
+				t.Setenv("API_PORT", "ochenta")
 			},
 			wantMsg: "API_PORT",
 		},

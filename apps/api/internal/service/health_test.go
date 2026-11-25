@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mateo/ms-gestor-de-info/apps/api/internal/config"
+	"github.com/PINGESO-CIVIL/gestor-de-info/apps/api/internal/config"
 )
 
 func TestHealthCheck(t *testing.T) {

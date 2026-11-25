@@ -217,9 +217,9 @@ Mientras que herramientas como Trivy o `govulncheck` vigilan las dependencias ex
 
 1. Entra a [https://sonarcloud.io](https://sonarcloud.io) e inicia sesión con tu cuenta de **GitHub**.
 2. Accede directamente al panel del proyecto mediante este enlace:
-   - **Dashboard del proyecto**: [https://sonarcloud.io/project/overview?id=MateoVL_PINGESO-MS-Gestor-de-info](https://sonarcloud.io/project/overview?id=MateoVL_PINGESO-MS-Gestor-de-info)
-   - **Organización (`sonar.organization`)**: `mateovl`
-   - **Project Key (`sonar.projectKey`)**: `MateoVL_PINGESO-MS-Gestor-de-info`
+   - **Dashboard del proyecto**: [https://sonarcloud.io/project/overview?id=PINGESO-CIVIL_gestor-de-info](https://sonarcloud.io/project/overview?id=PINGESO-CIVIL_gestor-de-info)
+   - **Organización (`sonar.organization`)**: `pingeso-civil`
+   - **Project Key (`sonar.projectKey`)**: `PINGESO-CIVIL_gestor-de-info`
 3. Dentro del panel, en la pestaña **Pull Requests** o **Branches**, puedes revisar el detalle exacto de por qué falló un Quality Gate (qué líneas nuevas no tienen tests, qué _Code Smell_ apareció o qué _Security Hotspot_ falta revisar).
 4. Si necesitas permisos de administración o revisión de _Security Hotspots_, solicítalos al administrador de la organización en GitHub/SonarQube Cloud.
 
@@ -233,9 +233,9 @@ Mientras que herramientas como Trivy o `govulncheck` vigilan las dependencias ex
 
 ## Escáneres obligatorios: SonarQube y Trivy (`AGENTS.md` sección 7)
 
-- **Pipeline de CI (GitHub Actions)**: [https://github.com/MateoVL/PINGESO-MS-Gestor-de-info/actions/workflows/ci.yml](https://github.com/MateoVL/PINGESO-MS-Gestor-de-info/actions/workflows/ci.yml)
-- **Organización SonarQube Cloud (`sonar.organization`)**: `pingeso-gestor-info` (`sonar-project.properties`)
-- **Clave del proyecto SonarQube (`sonar.projectKey`)**: `MateoVL_PINGESO-MS-Gestor-de-info` (`sonar-project.properties`)
+- **Pipeline de CI (GitHub Actions)**: [https://github.com/PINGESO-CIVIL/gestor-de-info/actions/workflows/ci.yml](https://github.com/PINGESO-CIVIL/gestor-de-info/actions/workflows/ci.yml)
+- **Organización SonarQube Cloud (`sonar.organization`)**: `pingeso-civil` (`sonar-project.properties`)
+- **Clave del proyecto SonarQube (`sonar.projectKey`)**: `PINGESO-CIVIL_gestor-de-info` (`sonar-project.properties`)
 - **Requisito en SonarQube Cloud**: En **Administration → Analysis Method**, mantener **Automatic Analysis** desactivado para permitir el análisis desde GitHub Actions (`CI-based Analysis`) con lectura de cobertura (`coverage.out` y `apps/web/coverage/lcov.info`).
 - **Alcance de cobertura en SonarQube Cloud (`sonar.exclusions`)**: Dado que el nuevo motor de alcance de SonarQube Cloud analiza todo el repositorio por defecto e ignora `sonar.sources`, se excluyen explícitamente en `sonar-project.properties` los archivos generados (`apps/api/internal/repository/**`, `apps/web/src/types/**`), entrypoints de proceso (`apps/api/cmd/**`, `apps/web/server.go`, `apps/web/src/main.tsx`), mocks de desarrollo (`apps/web/src/mocks/**`) y archivos de prueba para que el Quality Gate mida únicamente la cobertura sobre las capas de negocio y microcomponentes.
 - **Ejecución local de SonarQube**:

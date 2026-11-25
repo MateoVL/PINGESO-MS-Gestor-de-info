@@ -13,7 +13,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/mateo/ms-gestor-de-info/apps/api/internal/store"
+	"github.com/PINGESO-CIVIL/gestor-de-info/apps/api/internal/store"
 )
 
 const (
@@ -86,6 +86,7 @@ func (s *BatchService) Receive(ctx context.Context, in BatchInput) (BatchResult,
 
 	for range maxAttempts {
 		nb := s.build(batch, valid, rejected)
+		nb.Auditoria = eventoCreacionLote(ctx, nb.Lote)
 		err := s.store.Create(ctx, nb)
 
 		var duplicated *store.ErrFoliosDuplicados

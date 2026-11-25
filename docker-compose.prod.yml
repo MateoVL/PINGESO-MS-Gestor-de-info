@@ -59,7 +59,6 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:?Define POSTGRES_USER en .env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
       DIGITALIZACION_URL: ${DIGITALIZACION_URL:-http://localhost:5151}
-      REPORTES_URL: ${REPORTES_URL:-http://localhost:5111}
       IDENTIDAD_URL: ${IDENTIDAD_URL:-http://localhost:5101}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       SERVICE_ROLE: ${SERVICE_ROLE:-}

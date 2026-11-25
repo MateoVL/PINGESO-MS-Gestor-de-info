@@ -49,3 +49,8 @@ jobs:
           cosign sign-blob --yes --bundle sbom-api.cdx.json.sigstore.json sbom-api.cdx.json
           cosign sign-blob --yes --bundle sbom-migrate.cdx.json.sigstore.json sbom-migrate.cdx.json
           gh release upload "${GITHUB_REF_NAME}" sbom-api.cdx.json sbom-api.cdx.json.sigstore.json sbom-migrate.cdx.json sbom-migrate.cdx.json.sigstore.json --clobber
+
+      - name: Adjuntar el contrato openapi.yaml a la release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${GITHUB_REF_NAME}" contracts/openapi.yaml --clobber

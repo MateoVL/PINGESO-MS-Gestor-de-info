@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/PINGESO-CIVIL/gestor-de-info/apps/api/internal/service"
+	"github.com/PINGESO-CIVIL/gestor-de-info/apps/api/internal/store"
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humago"
-	"github.com/mateo/ms-gestor-de-info/apps/api/internal/service"
-	"github.com/mateo/ms-gestor-de-info/apps/api/internal/store"
 )
 
 const maxBodyBytes = 5 << 20
@@ -74,7 +74,8 @@ type Options struct {
 // NewHumaAPI registra las operaciones tipadas en Huma v2 para generar el contrato OpenAPI 3.1 y servir /api/docs en API_ENV=dev
 func NewHumaAPI(mux *http.ServeMux, opts Options, deps Dependencies) huma.API {
 	cfg := huma.DefaultConfig("MS Gestor de Información API", "1.0.0")
-	cfg.Info.Description = "Contrato OpenAPI 3.1 del microservicio PT2 (Gestor de Información · PINGESO). Recibe lotes del Extractor de Datos OCR (PT5), limpia, valida y almacena registros en PostgreSQL para el Motor de Reportes (PT1)."
+	cfg.Info.Description = "Recibe lotes de registros desde el extractor OCR, los limpia y valida, y guarda los registros aceptados en PostgreSQL para que otros servicios, como el motor de reportes, los consulten."
+	cfg.CreateHooks = nil
 	cfg.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
 		"cookieAuth": {
 			Type:        "apiKey",
@@ -381,7 +382,9 @@ func NewRouter(opts Options, deps Dependencies) http.Handler {
 			RespondError(w, r, ErrForbidden)
 			return r, false
 		}
-		return r.WithContext(WithPrincipal(r.Context(), principal)), true
+		ctx := WithPrincipal(r.Context(), principal)
+		ctx = service.WithActor(ctx, principal.Subject)
+		return r.WithContext(ctx), true
 	}
 
 	mainHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

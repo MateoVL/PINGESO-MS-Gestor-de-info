@@ -26,6 +26,7 @@ Este documento describe los modos de falla previstos para el microservicio **Ges
 - **Mitigación**:
   - Los registros con folio repetido dentro del mismo lote se separan automáticamente como rechazados con motivo `folio_duplicado`.
   - Si el `store` detecta colisión con un folio ya persistido (`ErrFoliosDuplicados`), el servicio reclasifica únicamente los folios en conflicto al listado de rechazos con motivo `folio_ya_registrado` y guarda el resto de los registros válidos del lote (hasta 5 reintentos ante contención concurrente).
+- **Verificación**: el e2e `TestE2EBinarioPostgres` (`apps/api/e2e/binario_test.go`) envía cinco lotes simultáneos con el folio `DOC-900` al binario real contra PostgreSQL real, y el reporte (`e2e/testdata/escenario.golden.md`) exige que quede guardado una sola vez. Al quitar a propósito la restricción `UNIQUE` y la verificación previa del `store`, el e2e falla: los cinco lotes guardan `DOC-900`.
 
 ## 4. Datos sucios o malformados desde OCR
 
@@ -40,5 +41,13 @@ Este documento describe los modos de falla previstos para el microservicio **Ges
 
 - **Síntoma**: Un servicio externo no responde dentro del SLA.
 - **Mitigación**:
-  - Todo cliente HTTP hacia servicios externos (`MS_DIGITALIZACION_URL`, `MS_REPORTES_URL`) fija un timeout explícito de **5 segundos** por defecto, propaga el JWT y el encabezado `X-Request-ID`, y ante falla devuelve un error controlado sin colgar la request entrante.
+  - Todo cliente HTTP hacia servicios externos (por ejemplo `DIGITALIZACION_URL`) fija un timeout explícito de **5 segundos** por defecto, propaga el JWT y el encabezado `X-Request-ID`, y ante falla devuelve un error controlado sin colgar la request entrante.
 
+## 6. Operación sin registro de quién la hizo (Auditoría)
+
+- **Síntoma**: Se crea un lote y no queda constancia de quién lo envió ni cuándo.
+- **Mitigación**:
+  - Cada lote nuevo registra un evento en la tabla `auditoria` (migración `00002_auditoria.sql`) con `actor` (el `sub` del JWT), `accion` (`crear_lote`), `entidad`, `entidad_id`, `request_id`, `ocurrido_en` y un `detalle` con los totales del lote.
+  - El evento se guarda en la misma transacción que el lote: si una de las dos escrituras falla, no se guarda ninguna.
+  - Un reintento idempotente no cambia datos, así que no genera un evento nuevo.
+- **Verificación**: `internal/service/auditoria_test.go` y el e2e, que consulta la tabla `auditoria` directamente en PostgreSQL.
